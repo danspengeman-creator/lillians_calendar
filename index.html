@@ -547,6 +547,12 @@
         if(!events || !events.length){
           events = defaultEvents.slice();
           save();
+        } else {
+          const hasLillianBday = events.some(e=>e.recurring && e.date==='06-11' && e.type==='birthday');
+          if(!hasLillianBday){
+            events.push(defaultEvents[0]);
+            save();
+          }
         }
         setSyncStatus('');
         finishInit();
@@ -673,7 +679,12 @@
     selectedDateKey = fullKey(y,m,d);
     const dateObj = new Date(y,m,d);
     sheetDate.textContent = dateObj.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
-    sheetSub.textContent = "What's happening today?";
+    const isLillianBdayToday = (m===5 && d===11) && (y===today.getFullYear() && m===today.getMonth() && d===today.getDate());
+    sheetSub.innerHTML = isLillianBdayToday
+      ? '🎉🎂 Happy Birthday, Lillian! 🎂🎉'
+      : "What's happening today?";
+    if(isLillianBdayToday) sheetSub.style.color = '#ff5ec4';
+    else sheetSub.style.color = '';
     renderEventList();
     resetTimePicker();
     overlay.classList.add('open');
@@ -876,15 +887,23 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
       numsEl.innerHTML = '';
       return;
     }
-    nameEl.textContent = (best.ev.emoji||'⭐') + ' ' + best.ev.title;
+    const isLillianBday = ev => ev.recurring && ev.date === '06-11' && ev.type==='birthday';
+    nameEl.textContent = isLillianBday(best.ev)
+      ? '🎂 My Birthday!'
+      : (best.ev.emoji||'⭐') + ' ' + best.ev.title;
     const diffMs = best.occ - todayStrip;
     const totalDays = Math.round(diffMs / 86400000);
     if(totalDays===0){
-      numsEl.innerHTML = `<div><span class="num">🎉</span><span class="unit">Today!</span></div>`;
+      if(isLillianBday(best.ev)){
+        numsEl.innerHTML = `<div><span class="num">🎉</span><span class="unit">Happy Birthday!</span></div>`;
+        return;
+      }
+      const timeStr = best.ev.time ? ' at ' + formatTime(best.ev.time) : '';
+      numsEl.innerHTML = `<div><span class="num">🎉</span><span class="unit">Today${timeStr}!</span></div>`;
       return;
     }
     numsEl.innerHTML = `
-      <div><span class="num">${totalDays}</span><span class="unit">days away</span></div>
+      <div><span class="num">${totalDays}</span><span class="unit">days${isLillianBday(best.ev) ? ' to my birthday' : ' away'}</span></div>
     `;
   }
 
