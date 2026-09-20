@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Lillian's Magic Calendar</title>
+<style>
+  :root{
+    --pink:#ff8fd6;
+    --purple:#b48cff;
+    --blue:#7fd8ff;
+    --yellow:#ffe57f;
+    --mint:#8ff5c7;
+    --ink:#4a3560;
+    --card:#ffffffee;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Segoe UI Rounded', 'Trebuchet MS', sans-serif;
+    background:
+      radial-gradient(circle at 15% 10%, #ffd1f0 0%, transparent 40%),
+      radial-gradient(circle at 85% 15%, #cdbfff 0%, transparent 40%),
+      radial-gradient(circle at 50% 90%, #bdf3ff 0%, transparent 45%),
+      linear-gradient(160deg, #fff0fb, #eef3ff 60%, #f2fff8);
+    color:var(--ink);
+    min-height:100%;
+    overflow-x:hidden;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    position:relative;
+  }
+  .sparkle{
+    position:fixed; pointer-events:none; font-size:22px; opacity:.8;
+    animation:drift linear infinite;
+    z-index:0;
+  }
+  @keyframes drift{
+    0%{transform:translateY(0) rotate(0deg); opacity:.9;}
+    100%{transform:translateY(-110vh) rotate(360deg); opacity:0;}
+  }
+  header{
+    text-align:center;
+    padding:22px 16px 10px;
+    position:relative;
+    z-index:2;
+  }
+  h1{
+    margin:0;
+    font-size:2.1rem;
+    background:linear-gradient(90deg,#ff5ec4,#b06bff,#5ec8ff);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    letter-spacing:1px;
+    text-shadow:0 2px 0 rgba(255,255,255,.6);
+  }
+  h1 .wand{
+    display:inline-block;
+    animation:wiggle 2.2s ease-in-out infinite;
+  }
+  @keyframes wiggle{
+    0%,100%{transform:rotate(-8deg);}
+    50%{transform:rotate(12deg);}
+  }
+  .subtitle{color:#8a6fa8; font-weight:600; margin-top:4px;}
+
+  .countdown-wrap{
+    max-width:520px; margin:14px auto 0; padding:0 16px;
+    position:relative; z-index:2;
+  }
+  .countdown-card{
+    background:linear-gradient(135deg, var(--purple), var(--pink));
+    border-radius:28px;
+    padding:18px 20px;
+    color:white;
+    box-shadow:0 12px 30px -10px rgba(150,80,220,.55);
+    text-align:center;
+    animation:pulseCard 3s ease-in-out infinite;
+  }
+  @keyframes pulseCard{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.015);}
+  }
+  .countdown-card .label{font-size:.85rem; opacity:.9; font-weight:700; text-transform:uppercase; letter-spacing:1px;}
+  .countdown-card .event-name{font-size:1.5rem; font-weight:800; margin:4px 0 8px;}
+  .countdown-nums{display:flex; justify-content:center; gap:10px; flex-wrap:wrap;}
+  .countdown-nums div{
+    background:rgba(255,255,255,.25);
+    border-radius:14px;
+    padding:8px 12px;
+    min-width:56px;
+  }
+  .countdown-nums .num{font-size:1.6rem; font-weight:800; display:block;}
+  .countdown-nums .unit{font-size:.65rem; text-transform:uppercase; opacity:.9;}
+
+  .cal-wrap{
+    max-width:560px; margin:18px auto 40px; padding:0 12px;
+    position:relative; z-index:2;
+  }
+  .cal-card{
+    background:var(--card);
+    border-radius:28px;
+    padding:16px;
+    box-shadow:0 20px 40px -18px rgba(120,90,180,.4);
+    backdrop-filter:blur(6px);
+  }
+  .cal-nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:4px 4px 12px;
+  }
+  .cal-nav button{
+    border:none; background:linear-gradient(135deg,var(--blue),var(--purple));
+    color:white; width:46px; height:46px; border-radius:16px;
+    font-size:1.4rem; font-weight:800;
+    box-shadow:0 6px 14px -6px rgba(120,90,220,.6);
+    touch-action:manipulation;
+  }
+  .cal-nav button:active{transform:scale(.9);}
+  .cal-month{font-size:1.3rem; font-weight:800; color:var(--ink);}
+  .cal-month .yr{font-weight:600; color:#a58bc4; font-size:1rem;}
+
+  .weekdays{
+    display:grid; grid-template-columns:repeat(7,1fr);
+    text-align:center; font-weight:800; color:#a58bc4;
+    font-size:.72rem; margin-bottom:6px; letter-spacing:.5px;
+  }
+  .days{
+    display:grid; grid-template-columns:repeat(7,1fr); gap:6px;
+  }
+  .day{
+    position:relative;
+    aspect-ratio:1/1;
+    border-radius:16px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:#f6f1ff;
+    font-weight:700; font-size:.95rem; color:var(--ink);
+    border:2px solid transparent;
+    touch-action:manipulation;
+    transition:transform .12s ease;
+    min-height:44px;
+  }
+  .day.empty{background:transparent;}
+  .day.today{
+    border-color:#ff9ad1;
+    background:linear-gradient(135deg,#fff2fa,#f3eaff);
+  }
+  .day:not(.empty):active{transform:scale(.9);}
+  .day .dots{position:absolute; bottom:5px; display:flex; gap:3px;}
+  .day .dots span{width:6px; height:6px; border-radius:50%;}
+  .day.has-event{background:linear-gradient(135deg,#ffe0f3,#e7e0ff);}
+
+  .legend{
+    display:flex; gap:14px; justify-content:center; flex-wrap:wrap;
+    margin-top:14px; font-size:.75rem; color:#8a6fa8; font-weight:700;
+  }
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .legend i{width:10px; height:10px; border-radius:50%; display:inline-block;}
+
+  /* Modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(70,40,90,.45);
+    display:none; align-items:flex-end; justify-content:center;
+    z-index:10; backdrop-filter:blur(3px);
+  }
+  .overlay.open{display:flex;}
+  .sheet{
+    background:white; width:100%; max-width:520px;
+    border-radius:28px 28px 0 0;
+    padding:20px 20px calc(24px + env(safe-area-inset-bottom,0px));
+    max-height:85vh; overflow-y:auto;
+    animation:slideUp .25s ease-out;
+    box-shadow:0 -10px 40px rgba(80,40,120,.35);
+  }
+  @keyframes slideUp{from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;}}
+  .sheet h2{margin:0 0 4px; font-size:1.4rem; color:var(--ink);}
+  .sheet .sub{color:#a58bc4; font-weight:700; margin-bottom:14px;}
+  .close-x{
+    position:absolute; top:14px; right:22px;
+    background:#f3eaff; border:none; width:38px; height:38px; border-radius:12px;
+    font-size:1.1rem; font-weight:800; color:var(--purple);
+  }
+  .sheet-inner{position:relative;}
+
+  .event-list .ev{
+    display:flex; align-items:center; gap:10px;
+    background:#faf6ff; border-radius:16px; padding:12px 14px; margin-bottom:10px;
+    border-left:6px solid var(--pink);
+  }
+  .ev .emoji{font-size:1.5rem;}
+  .ev .info{flex:1;}
+  .ev .title{font-weight:800; color:var(--ink);}
+  .ev .time{font-size:.8rem; color:#a58bc4; font-weight:600;}
+  .ev .del{
+    border:none; background:#ffe3ea; color:#e6558c; width:34px; height:34px;
+    border-radius:10px; font-weight:800;
+  }
+  .empty-msg{
+    text-align:center; color:#b8a4d6; padding:18px 0; font-weight:600;
+  }
+
+  form.add-form{margin-top:16px; display:flex; flex-direction:column; gap:10px;}
+  form.add-form label{font-size:.75rem; font-weight:800; color:#8a6fa8; margin-bottom:-4px;}
+  form.add-form input, form.add-form select{
+    border:2px solid #ecdfff; border-radius:14px; padding:12px 14px;
+    font-size:1rem; font-family:inherit; background:#fbf9ff; color:var(--ink);
+  }
+  .emoji-pick{display:flex; flex-wrap:wrap; gap:8px;}
+  .emoji-pick button{
+    font-size:1.4rem; border:2px solid #ecdfff; background:#fbf9ff;
+    border-radius:12px; width:46px; height:46px;
+  }
+  .emoji-pick button.sel{border-color:var(--pink); background:#ffe6f4;}
+  .add-btn{
+    margin-top:4px; border:none; border-radius:16px; padding:14px;
+    background:linear-gradient(135deg,#ff8fd6,#b48cff);
+    color:white; font-weight:800; font-size:1.05rem;
+    box-shadow:0 10px 20px -8px rgba(180,90,220,.5);
+  }
+  .add-btn:active{transform:scale(.97);}
+
+  #catMascot{
+    position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom,0px));
+    width:60px; height:60px; border-radius:50%;
+    background:linear-gradient(135deg,#ffe6f4,#e7e0ff);
+    border:3px solid white;
+    box-shadow:0 10px 22px -8px rgba(150,80,200,.55);
+    font-size:1.8rem; z-index:20;
+    animation:catBob 2.6s ease-in-out infinite;
+  }
+  #catMascot:active{transform:scale(.85);}
+  @keyframes catBob{
+    0%,100%{transform:translateY(0) rotate(0deg);}
+    50%{transform:translateY(-6px) rotate(-6deg);}
+  }
+  #catBubble{
+    position:fixed; right:20px; bottom:calc(84px + env(safe-area-inset-bottom,0px));
+    background:white; color:var(--ink); font-weight:800;
+    padding:8px 14px; border-radius:16px 16px 4px 16px;
+    box-shadow:0 8px 20px -8px rgba(120,80,180,.5);
+    font-size:.85rem; z-index:20;
+    opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
+    transform:translateY(6px);
+  }
+  #catBubble.show{opacity:1; transform:translateY(0);}
+  .paw{
+    position:fixed; pointer-events:none; font-size:16px; opacity:.7; z-index:30;
+    animation:pawFloat 1.4s ease-out forwards;
+  }
+  @keyframes pawFloat{
+    to{transform:translateY(-60px) rotate(20deg); opacity:0;}
+  }
+
+  .confetti{
+    position:fixed; width:10px; height:10px; top:-20px; z-index:50; pointer-events:none;
+    animation:fall linear forwards;
+  }
+  @keyframes fall{
+    to{transform:translateY(110vh) rotate(540deg); opacity:0;}
+  }
+</style>
+</head>
+<body>
+
+<div id="sparkles"></div>
+
+<header>
+  <h1><span class="wand">✨</span> Lillian's Magic Calendar <span class="wand">🪄</span></h1>
+  <div class="subtitle">🐾 Tap a day to peek inside! 🐾</div>
+</header>
+
+<button id="catMascot" aria-label="Pet the cat">🐱</button>
+<div id="catBubble">Purr! 💕</div>
+
+<div class="countdown-wrap">
+  <div class="countdown-card" id="countdownCard">
+    <div class="label">Coming up next</div>
+    <div class="event-name" id="nextEventName">Loading magic...</div>
+    <div class="countdown-nums" id="countdownNums"></div>
+  </div>
+</div>
+
+<div class="cal-wrap">
+  <div class="cal-card">
+    <div class="cal-nav">
+      <button id="prevBtn" aria-label="Previous month">‹</button>
+      <div class="cal-month"><span id="monthName"></span> <span class="yr" id="yearName"></span></div>
+      <button id="nextBtn" aria-label="Next month">›</button>
+    </div>
+    <div class="weekdays">
+      <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+    </div>
+    <div class="days" id="daysGrid"></div>
+    <div class="legend">
+      <span><i style="background:#ff8fd6"></i>Birthday</span>
+      <span><i style="background:#7fd8ff"></i>Play date</span>
+      <span><i style="background:#ffe57f"></i>School event</span>
+      <span><i style="background:#c9a6ff"></i>Parent event</span>
+      <span><i style="background:#8ff5c7"></i>Other</span>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-inner">
+      <button class="close-x" id="closeBtn">✕</button>
+      <h2 id="sheetDate">Day</h2>
+      <div class="sub" id="sheetSub"></div>
+
+      <div class="event-list" id="eventList"></div>
+
+      <form class="add-form" id="addForm">
+        <label>What's happening?</label>
+        <input type="text" id="titleInput" placeholder="e.g. Movie night!" maxlength="40" required>
+
+        <label>What time?</label>
+        <input type="time" id="timeInput">
+
+        <label>Pick a sparkle</label>
+        <div class="emoji-pick" id="emojiPick"></div>
+
+        <label>What kind of event?</label>
+        <select id="typeInput">
+          <option value="birthday">🎂 Birthday</option>
+          <option value="playdate" selected>🧸 Play date</option>
+          <option value="school">📚 School event</option>
+          <option value="parent">👪 Parent event</option>
+          <option value="other">🌈 Other</option>
+        </select>
+
+        <button type="submit" class="add-btn">Add to my calendar ✨</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = "lillian_calendar_events_v1";
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const typeColors = { birthday:"#ff8fd6", playdate:"#7fd8ff", school:"#ffe57f", parent:"#c9a6ff", other:"#8ff5c7" };
+  const typeLabels = { birthday:"🎂 Birthday", playdate:"🧸 Play date", school:"📚 School event", parent:"👪 Parent event", other:"🌈 Other" };
+  const emojiChoices = ["🎂","🎉","🎈","🌈","🦄","⭐","🐱","😺","🐾","🐈","🐶","🎮","⚽","🍕","🎨","📚","✈️","🏖️","🎃","👪"];
+
+  let events = [];
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    events = raw ? JSON.parse(raw) : null;
+  }catch(e){ events = null; }
+
+  if(!events){
+    // seed with family birthdays (recurring every year, no year stored -> use MM-DD key)
+    events = [
+      {id:"seed1", date:"06-11", recurring:true, title:"Lillian's Birthday!", time:"", emoji:"🎂", type:"birthday"},
+      {id:"seed2", date:"08-04", recurring:true, title:"Dad's Birthday", time:"", emoji:"🎈", type:"birthday"},
+      {id:"seed3", date:"05-11", recurring:true, title:"Mom's Birthday", time:"", emoji:"💐", type:"birthday"},
+      {id:"seed4", date:"05-02", recurring:true, title:"Maybelle's Birthday", time:"", emoji:"🎀", type:"birthday"},
+      {id:"seed5", date:"12-24", recurring:true, title:"Nolan's Birthday", time:"", emoji:"🎁", type:"birthday"}
+    ];
+    save();
+  }
+
+  function save(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(events)); }catch(e){}
+  }
+
+  // ---- sparkle background ----
+  const sparkleLayer = document.getElementById('sparkles');
+  const sparkleChars = ["✨","⭐","💫","🌟","🐾"];
+  for(let i=0;i<18;i++){
+    const s = document.createElement('div');
+    s.className='sparkle';
+    s.textContent = sparkleChars[Math.floor(Math.random()*sparkleChars.length)];
+    s.style.left = Math.random()*100+'vw';
+    s.style.animationDuration = (8+Math.random()*10)+'s';
+    s.style.animationDelay = (Math.random()*10)+'s';
+    s.style.fontSize = (14+Math.random()*16)+'px';
+    sparkleLayer.appendChild(s);
+  }
+
+  // ---- calendar state ----
+  const today = new Date();
+  let viewYear = today.getFullYear();
+  let viewMonth = today.getMonth(); // 0-11
+  let selectedDateKey = null; // "YYYY-MM-DD"
+
+  const monthNameEl = document.getElementById('monthName');
+  const yearNameEl = document.getElementById('yearName');
+  const daysGrid = document.getElementById('daysGrid');
+
+  function pad(n){ return n<10 ? '0'+n : ''+n; }
+
+  function fullKey(y,m,d){ return y+'-'+pad(m+1)+'-'+pad(d); }
+  function mdKey(m,d){ return pad(m+1)+'-'+pad(d); }
+
+  function eventsForDate(y,m,d){
+    const fk = fullKey(y,m,d);
+    const mk = mdKey(m,d);
+    return events.filter(e=>{
+      if(e.recurring) return e.date === mk;
+      return e.date === fk;
+    });
+  }
+
+  function renderCalendar(){
+    monthNameEl.textContent = monthNames[viewMonth];
+    yearNameEl.textContent = viewYear;
+    daysGrid.innerHTML = '';
+
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+
+    for(let i=0;i<firstDay;i++){
+      const empty = document.createElement('div');
+      empty.className='day empty';
+      daysGrid.appendChild(empty);
+    }
+
+    for(let d=1; d<=daysInMonth; d++){
+      const cell = document.createElement('div');
+      const isToday = (viewYear===today.getFullYear() && viewMonth===today.getMonth() && d===today.getDate());
+      cell.className='day'+(isToday?' today':'');
+      cell.textContent = d;
+
+      const evs = eventsForDate(viewYear, viewMonth, d);
+      if(evs.length){
+        cell.classList.add('has-event');
+        const dotsWrap = document.createElement('div');
+        dotsWrap.className='dots';
+        const uniqueTypes = [...new Set(evs.map(e=>e.type))].slice(0,4);
+        uniqueTypes.forEach(t=>{
+          const dot = document.createElement('span');
+          dot.style.background = typeColors[t] || '#ccc';
+          dotsWrap.appendChild(dot);
+        });
+        cell.appendChild(dotsWrap);
+      }
+
+      cell.addEventListener('click', ()=> openDay(viewYear, viewMonth, d));
+      daysGrid.appendChild(cell);
+    }
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', ()=>{
+    viewMonth--; if(viewMonth<0){viewMonth=11; viewYear--;}
+    renderCalendar();
+  });
+  document.getElementById('nextBtn').addEventListener('click', ()=>{
+    viewMonth++; if(viewMonth>11){viewMonth=0; viewYear++;}
+    renderCalendar();
+  });
+
+  // ---- day sheet ----
+  const overlay = document.getElementById('overlay');
+  const sheetDate = document.getElementById('sheetDate');
+  const sheetSub = document.getElementById('sheetSub');
+  const eventList = document.getElementById('eventList');
+  const addForm = document.getElementById('addForm');
+  const titleInput = document.getElementById('titleInput');
+  const timeInput = document.getElementById('timeInput');
+  const typeInput = document.getElementById('typeInput');
+  const emojiPick = document.getElementById('emojiPick');
+  let selectedEmoji = "⭐";
+
+  emojiChoices.forEach(em=>{
+    const b = document.createElement('button');
+    b.type='button';
+    b.textContent = em;
+    if(em===selectedEmoji) b.classList.add('sel');
+    b.addEventListener('click', ()=>{
+      selectedEmoji = em;
+      [...emojiPick.children].forEach(c=>c.classList.remove('sel'));
+      b.classList.add('sel');
+    });
+    emojiPick.appendChild(b);
+  });
+
+  function openDay(y,m,d){
+    selectedDateKey = fullKey(y,m,d);
+    const dateObj = new Date(y,m,d);
+    sheetDate.textContent = dateObj.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
+    sheetSub.textContent = "What's happening today?";
+    renderEventList();
+    overlay.classList.add('open');
+  }
+
+  function renderEventList(){
+    const parts = selectedDateKey.split('-');
+    const y = +parts[0], m = +parts[1]-1, d = +parts[2];
+    const evs = eventsForDate(y,m,d);
+    eventList.innerHTML = '';
+    if(!evs.length){
+      const p = document.createElement('div');
+      p.className='empty-msg';
+      p.textContent = "Nothing yet, this day is a blank page! ✏️";
+      eventList.appendChild(p);
+      return;
+    }
+    evs.forEach(ev=>{
+      const row = document.createElement('div');
+      row.className='ev';
+      row.style.borderLeftColor = typeColors[ev.type] || '#ccc';
+      row.innerHTML = `
+        <div class="emoji">${ev.emoji||'⭐'}</div>
+        <div class="info">
+          <div class="title">${escapeHtml(ev.title)}</div>
+          <div class="time">${ev.time ? formatTime(ev.time) : ''}${ev.recurring ? ' · every year' : ''}</div>
+        </div>
+        <button class="del" data-id="${ev.id}">✕</button>
+      `;
+      eventList.appendChild(row);
+    });
+    eventList.querySelectorAll('.del').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        events = events.filter(e=>e.id!==btn.dataset.id);
+        save();
+        renderEventList();
+        renderCalendar();
+        updateCountdown();
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function formatTime(t){
+    const [h,mm] = t.split(':').map(Number);
+    const ap = h>=12 ? 'PM':'AM';
+    const h12 = ((h+11)%12)+1;
+    return h12+':'+pad(mm)+' '+ap;
+  }
+
+  document.getElementById('closeBtn').addEventListener('click', ()=> overlay.classList.remove('open'));
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.classList.remove('open'); });
+
+  addForm.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const title = titleInput.value.trim();
+    if(!title) return;
+    const newEvent = {
+      id: 'ev_'+Date.now()+'_'+Math.floor(Math.random()*1000),
+      date: selectedDateKey,
+      recurring: false,
+      title,
+      time: timeInput.value || '',
+      emoji: selectedEmoji,
+      type: typeInput.value
+    };
+    events.push(newEvent);
+    save();
+    burstConfetti();
+    titleInput.value=''; timeInput.value='';
+    renderEventList();
+    renderCalendar();
+    updateCountdown();
+  });
+
+  // ---- countdown to next event ----
+  function nextOccurrence(ev, from){
+    if(ev.recurring){
+      const [mm,dd] = ev.date.split('-').map(Number);
+      let y = from.getFullYear();
+      let cand = new Date(y, mm-1, dd, 0,0,0);
+      if(cand < stripTime(from)) cand = new Date(y+1, mm-1, dd);
+      return cand;
+    } else {
+      const [y,mm,dd] = ev.date.split('-').map(Number);
+      return new Date(y, mm-1, dd, 0,0,0);
+    }
+  }
+  function stripTime(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+
+  function updateCountdown(){
+    const now = new Date();
+    const todayStrip = stripTime(now);
+    let best = null;
+    events.forEach(ev=>{
+      const occ = nextOccurrence(ev, now);
+      if(occ >= todayStrip){
+        if(!best || occ < best.occ){ best = {ev, occ}; }
+      }
+    });
+    const nameEl = document.getElementById('nextEventName');
+    const numsEl = document.getElementById('countdownNums');
+    if(!best){
+      nameEl.textContent = "Add your first event!";
+      numsEl.innerHTML = '';
+      return;
+    }
+    nameEl.textContent = (best.ev.emoji||'⭐') + ' ' + best.ev.title;
+    const diffMs = best.occ - todayStrip;
+    const totalDays = Math.round(diffMs / 86400000);
+    if(totalDays===0){
+      numsEl.innerHTML = `<div><span class="num">🎉</span><span class="unit">Today!</span></div>`;
+      return;
+    }
+    const weeks = Math.floor(totalDays/7);
+    const days = totalDays % 7;
+    numsEl.innerHTML = `
+      <div><span class="num">${totalDays}</span><span class="unit">days total</span></div>
+      <div><span class="num">${weeks}</span><span class="unit">weeks</span></div>
+      <div><span class="num">${days}</span><span class="unit">extra days</span></div>
+    `;
+  }
+
+  // ---- confetti burst ----
+  function burstConfetti(){
+    const colors = ['#ff8fd6','#b48cff','#7fd8ff','#ffe57f','#8ff5c7'];
+    for(let i=0;i<26;i++){
+      const c = document.createElement('div');
+      c.className='confetti';
+      c.style.left = (40+Math.random()*20)+'vw';
+      c.style.background = colors[Math.floor(Math.random()*colors.length)];
+      c.style.borderRadius = Math.random()>0.5 ? '50%' : '3px';
+      c.style.animationDuration = (1.2+Math.random()*1.2)+'s';
+      document.body.appendChild(c);
+      setTimeout(()=>c.remove(), 2600);
+    }
+  }
+
+  // ---- cat mascot ----
+  const catMascot = document.getElementById('catMascot');
+  const catBubble = document.getElementById('catBubble');
+  const catLines = ["Purr! 💕","Meow meow!","You're pawsome!","Let's plan something fun!","🐾 Hi friend! 🐾","I love this calendar!"];
+  let bubbleTimer = null;
+  catMascot.addEventListener('click', ()=>{
+    catBubble.textContent = catLines[Math.floor(Math.random()*catLines.length)];
+    catBubble.classList.add('show');
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(()=> catBubble.classList.remove('show'), 1800);
+
+    for(let i=0;i<5;i++){
+      const p = document.createElement('div');
+      p.className='paw';
+      p.textContent='🐾';
+      p.style.right = (10+Math.random()*50)+'px';
+      p.style.bottom = (70+Math.random()*20)+'px';
+      p.style.animationDelay = (i*0.08)+'s';
+      document.body.appendChild(p);
+      setTimeout(()=>p.remove(), 1600);
+    }
+  });
+
+  renderCalendar();
+  updateCountdown();
+})();
+</script>
+</body>
+</html>
