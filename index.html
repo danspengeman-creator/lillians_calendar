@@ -21,7 +21,6 @@
     margin:0;
     font-family:'Segoe UI Rounded', 'Trebuchet MS', sans-serif;
     background:
-      radial-gradient(circle at 15% 10%, #ffd1f0 0%, transparent 40%),
       radial-gradient(circle at 85% 15%, #cdbfff 0%, transparent 40%),
       radial-gradient(circle at 50% 90%, #bdf3ff 0%, transparent 45%),
       linear-gradient(160deg, #fff0fb, #eef3ff 60%, #f2fff8);
@@ -223,6 +222,51 @@
   }
   .add-btn:active{transform:scale(.97);}
 
+  .bday-list-btn{
+    display:block; margin:12px auto 0;
+    border:none; border-radius:18px; padding:12px 20px;
+    background:white; color:var(--purple); font-weight:800; font-size:.95rem;
+    box-shadow:0 10px 22px -10px rgba(150,80,200,.5);
+    border:2px solid #f0d9ff;
+  }
+  .bday-list-btn:active{transform:scale(.96);}
+
+  .weather-card{
+    margin-top:16px;
+    background:linear-gradient(135deg,#bfeaff,#d9f7ff);
+    border-radius:24px;
+    padding:16px 18px;
+    box-shadow:0 14px 28px -16px rgba(80,150,200,.45);
+    color:#2c5c74;
+  }
+  .weather-head{font-weight:800; font-size:1rem; margin-bottom:8px;}
+  .weather-body{font-weight:600; font-size:.9rem;}
+  .weather-now{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .weather-now .big{font-size:2rem;}
+  .weather-now .temp{font-size:1.5rem; font-weight:800;}
+  .weather-days{display:flex; gap:10px; overflow-x:auto; padding-bottom:2px;}
+  .weather-day{
+    background:rgba(255,255,255,.6); border-radius:14px; padding:8px 10px;
+    text-align:center; min-width:58px; flex:0 0 auto;
+  }
+  .weather-day .d{font-size:.7rem; font-weight:800; opacity:.75;}
+  .weather-day .e{font-size:1.3rem; margin:2px 0;}
+  .weather-day .t{font-size:.75rem; font-weight:700;}
+
+  .bday-row{
+    display:flex; align-items:center; gap:12px;
+    background:#faf6ff; border-radius:16px; padding:12px 14px; margin-bottom:10px;
+    border-left:6px solid var(--pink);
+  }
+  .bday-row .emoji{font-size:1.6rem;}
+  .bday-row .info{flex:1;}
+  .bday-row .name{font-weight:800; color:var(--ink);}
+  .bday-row .date{font-size:.78rem; color:#a58bc4; font-weight:600;}
+  .bday-row .away{
+    font-weight:800; color:white; background:linear-gradient(135deg,var(--purple),var(--pink));
+    border-radius:12px; padding:6px 10px; font-size:.8rem; text-align:center; white-space:nowrap;
+  }
+
   #catMascot{
     position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom,0px));
     width:60px; height:60px; border-radius:50%;
@@ -282,6 +326,7 @@
     <div class="event-name" id="nextEventName">Loading magic...</div>
     <div class="countdown-nums" id="countdownNums"></div>
   </div>
+  <button class="bday-list-btn" id="bdayListBtn">🎂 See All Birthdays</button>
 </div>
 
 <div class="cal-wrap">
@@ -302,6 +347,11 @@
       <span><i style="background:#c9a6ff"></i>Parent event</span>
       <span><i style="background:#8ff5c7"></i>Other</span>
     </div>
+  </div>
+
+  <div class="weather-card" id="weatherCard">
+    <div class="weather-head">🌤️ Oceanport Weather</div>
+    <div class="weather-body" id="weatherBody">Checking the sky...</div>
   </div>
 </div>
 
@@ -339,6 +389,17 @@
   </div>
 </div>
 
+<div class="overlay" id="bdayOverlay">
+  <div class="sheet">
+    <div class="sheet-inner">
+      <button class="close-x" id="bdayCloseBtn">✕</button>
+      <h2>🎂 All Birthdays</h2>
+      <div class="sub">Soonest first!</div>
+      <div id="bdayList"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   const STORAGE_KEY = "lillian_calendar_events_v1";
@@ -346,7 +407,7 @@
   const typeColors = { birthday:"#ff8fd6", playdate:"#7fd8ff", school:"#ffe57f", parent:"#c9a6ff", other:"#8ff5c7" };
   const typeDefaultEmoji = { birthday:"🎂", playdate:"👫", school:"📚", parent:"👪", other:"🌈" };
   const typeLabels = { birthday:"🎂 Birthday", playdate:"🧸 Play date", school:"📚 School event", parent:"👪 Parent event", other:"🌈 Other" };
-  const emojiChoices = ["🎂","🎉","🎈","🌈","🦄","⭐","🐱","😺","🐾","🐈","👫","🐶","🎮","⚽","🍕","🎨","📚","✈️","🏖️","🎃","👪","🦋","🍦","🎁","🧩","🚲"];
+  const emojiChoices = ["🎂","🎉","🎈","🌈","🦄","⭐","🐱","😺","🐾","🐈","👫","🐶","🎮","⚽","🍕","🎨","📚","✈️","🏖️","🎃","👪","🦋","🍦","🎁","🧩","🚲","👶","🤸","🍳","💼","📿","📖","🧶"];
 
   let events = [];
   try{
@@ -651,8 +712,92 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
     }
   });
 
+  // ---- all birthdays list ----
+  const bdayOverlay = document.getElementById('bdayOverlay');
+  const bdayList = document.getElementById('bdayList');
+  document.getElementById('bdayListBtn').addEventListener('click', ()=>{
+    renderBdayList();
+    bdayOverlay.classList.add('open');
+  });
+  document.getElementById('bdayCloseBtn').addEventListener('click', ()=> bdayOverlay.classList.remove('open'));
+  bdayOverlay.addEventListener('click', (e)=>{ if(e.target===bdayOverlay) bdayOverlay.classList.remove('open'); });
+
+  function renderBdayList(){
+    const now = new Date();
+    const todayStrip = stripTime(now);
+    const bdays = events.filter(e=>e.type==='birthday');
+    const rows = bdays.map(ev=>{
+      const occ = nextOccurrence(ev, now);
+      const days = Math.round((occ - todayStrip)/86400000);
+      return {ev, occ, days};
+    }).sort((a,b)=> a.days - b.days);
+
+    bdayList.innerHTML = '';
+    if(!rows.length){
+      const p = document.createElement('div');
+      p.className='empty-msg';
+      p.textContent = "No birthdays added yet!";
+      bdayList.appendChild(p);
+      return;
+    }
+    rows.forEach(r=>{
+      const row = document.createElement('div');
+      row.className='bday-row';
+      const dateStr = r.occ.toLocaleDateString(undefined,{month:'long', day:'numeric'});
+      const awayStr = r.days===0 ? "Today! 🎉" : r.days===1 ? "Tomorrow!" : r.days+" days";
+      row.innerHTML = `
+        <div class="emoji">${r.ev.emoji||'🎂'}</div>
+        <div class="info">
+          <div class="name">${escapeHtml(r.ev.title)}</div>
+          <div class="date">${dateStr}</div>
+        </div>
+        <div class="away">${awayStr}</div>
+      `;
+      bdayList.appendChild(row);
+    });
+  }
+
+  // ---- weather ----
+  function weatherEmoji(code){
+    if(code===0) return "☀️";
+    if(code===1 || code===2) return "🌤️";
+    if(code===3) return "☁️";
+    if(code>=45 && code<=48) return "🌫️";
+    if(code>=51 && code<=57) return "🌦️";
+    if(code>=61 && code<=67) return "🌧️";
+    if(code>=71 && code<=77) return "🌨️";
+    if(code>=80 && code<=82) return "🌧️";
+    if(code>=85 && code<=86) return "❄️";
+    if(code>=95) return "⛈️";
+    return "🌡️";
+  }
+  function loadWeather(){
+    const weatherBody = document.getElementById('weatherBody');
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=40.3160&longitude=-74.0205&current=temperature_2m,weathercode&daily=temperature_2m_max,temperature_2m_min,weathercode&temperature_unit=fahrenheit&timezone=auto&forecast_days=4";
+    fetch(url).then(r=>r.json()).then(data=>{
+      const cur = data.current;
+      const daily = data.daily;
+      const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      let html = `<div class="weather-now"><span class="big">${weatherEmoji(cur.weathercode)}</span><span class="temp">${Math.round(cur.temperature_2m)}°F</span> now in Oceanport</div>`;
+      html += '<div class="weather-days">';
+      daily.time.forEach((t,i)=>{
+        const d = new Date(t+'T00:00:00');
+        html += `<div class="weather-day">
+          <div class="d">${i===0?'Today':dayNames[d.getDay()]}</div>
+          <div class="e">${weatherEmoji(daily.weathercode[i])}</div>
+          <div class="t">${Math.round(daily.temperature_2m_max[i])}°/${Math.round(daily.temperature_2m_min[i])}°</div>
+        </div>`;
+      });
+      html += '</div>';
+      weatherBody.innerHTML = html;
+    }).catch(()=>{
+      weatherBody.textContent = "Couldn't fetch the weather right now, check again later!";
+    });
+  }
+
   renderCalendar();
   updateCountdown();
+  loadWeather();
 })();
 </script>
 </body>
