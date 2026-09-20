@@ -238,6 +238,26 @@
     box-shadow:0 10px 20px -8px rgba(180,90,220,.5);
   }
 
+  .delete-preview{
+    display:flex; align-items:center; gap:10px;
+    background:#faf6ff; border-radius:16px; padding:14px; margin:14px 0;
+    border-left:6px solid var(--pink);
+  }
+  .delete-preview .emoji{font-size:1.6rem;}
+  .delete-preview .title{font-weight:800; color:var(--ink);}
+  .delete-btn-row{display:flex; gap:10px; margin-top:6px;}
+  .delete-cancel-btn, .delete-confirm-btn{
+    flex:1; border:none; border-radius:16px; padding:14px; font-weight:800; font-size:1rem;
+  }
+  .delete-cancel-btn{
+    background:#f3eaff; color:var(--purple);
+  }
+  .delete-confirm-btn{
+    background:linear-gradient(135deg,#ff6f9c,#ff4d6d); color:white;
+    box-shadow:0 10px 20px -8px rgba(230,80,110,.5);
+  }
+  .delete-cancel-btn:active, .delete-confirm-btn:active{transform:scale(.97);}
+
   form.add-form{margin-top:16px; display:flex; flex-direction:column; gap:10px;}
   form.add-form label{font-size:.75rem; font-weight:800; color:#8a6fa8; margin-bottom:-4px;}
   form.add-form input, form.add-form select, form.add-form .time-btn{
@@ -465,6 +485,21 @@
   </div>
 </div>
 
+<div class="overlay" id="deleteOverlay">
+  <div class="sheet">
+    <div class="sheet-inner">
+      <button class="close-x" id="deleteCloseBtn">✕</button>
+      <h2>Delete this? 🗑️</h2>
+      <div class="sub">This can't be undone</div>
+      <div class="delete-preview" id="deletePreview"></div>
+      <div class="delete-btn-row">
+        <button type="button" class="delete-cancel-btn" id="deleteCancelBtn">Keep it</button>
+        <button type="button" class="delete-confirm-btn" id="deleteConfirmBtn">Yes, delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   const FIREBASE_URL = "https://lillians-calendar-default-rtdb.firebaseio.com/events.json";
@@ -672,14 +707,32 @@
     });
     eventList.querySelectorAll('.del').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        events = events.filter(e=>e.id!==btn.dataset.id);
-        save();
-        renderEventList();
-        renderCalendar();
-        updateCountdown();
+        const ev = events.find(e=>e.id===btn.dataset.id);
+        if(ev) askDeleteConfirm(ev);
       });
     });
   }
+
+  function askDeleteConfirm(ev){
+    const preview = document.getElementById('deletePreview');
+    preview.innerHTML = `<div class="emoji">${ev.emoji||'⭐'}</div><div class="title">${escapeHtml(ev.title)}</div>`;
+    deleteOverlay.dataset.pendingId = ev.id;
+    deleteOverlay.classList.add('open');
+  }
+
+  const deleteOverlay = document.getElementById('deleteOverlay');
+  document.getElementById('deleteCloseBtn').addEventListener('click', ()=> deleteOverlay.classList.remove('open'));
+  document.getElementById('deleteCancelBtn').addEventListener('click', ()=> deleteOverlay.classList.remove('open'));
+  deleteOverlay.addEventListener('click', (e)=>{ if(e.target===deleteOverlay) deleteOverlay.classList.remove('open'); });
+  document.getElementById('deleteConfirmBtn').addEventListener('click', ()=>{
+    const id = deleteOverlay.dataset.pendingId;
+    events = events.filter(e=>e.id!==id);
+    save();
+    renderEventList();
+    renderCalendar();
+    updateCountdown();
+    deleteOverlay.classList.remove('open');
+  });
 
   function escapeHtml(s){
     const d = document.createElement('div');
