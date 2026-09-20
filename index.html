@@ -258,6 +258,23 @@
   }
   .delete-cancel-btn:active, .delete-confirm-btn:active{transform:scale(.97);}
 
+  .ashley-quick-btn{
+    display:block; width:100%; margin:12px 0 4px;
+    border:2px dashed #ffb199; border-radius:16px; padding:13px;
+    background:#fff3ee; color:#e0653a; font-weight:800; font-size:.95rem;
+  }
+  .ashley-quick-btn:active{transform:scale(.98);}
+
+  .ashley-opt-grid{display:flex; flex-direction:column; gap:10px; margin:14px 0 4px;}
+  .ashley-opt{
+    border:2px solid #ffe0d2; background:#fff8f4; border-radius:16px; padding:14px;
+    text-align:left; font-weight:800; color:#4a3560; display:flex; align-items:center; gap:10px;
+  }
+  .ashley-opt .tick{margin-left:auto; opacity:0; color:#ff8f5e; font-weight:900;}
+  .ashley-opt.sel{border-color:#ff9d6f; background:#ffece1;}
+  .ashley-opt.sel .tick{opacity:1;}
+  .ashley-opt .sub{font-weight:600; font-size:.75rem; color:#a58bc4; display:block;}
+
   form.add-form{margin-top:16px; display:flex; flex-direction:column; gap:10px;}
   form.add-form label{font-size:.75rem; font-weight:800; color:#8a6fa8; margin-bottom:-4px;}
   form.add-form input, form.add-form select, form.add-form .time-btn{
@@ -403,6 +420,7 @@
       <span><i style="background:#7fd8ff"></i>Play date</span>
       <span><i style="background:#ffe57f"></i>School event</span>
       <span><i style="background:#c9a6ff"></i>Parent event</span>
+      <span><i style="background:#ffb199"></i>Babysitting</span>
       <span><i style="background:#8ff5c7"></i>Other</span>
     </div>
   </div>
@@ -422,6 +440,8 @@
 
       <div class="event-list" id="eventList"></div>
 
+      <button type="button" class="ashley-quick-btn" id="ashleyQuickBtn">🧡 Quick Add: Ashley Day</button>
+
       <form class="add-form" id="addForm">
         <label>What's happening?</label>
         <input type="text" id="titleInput" placeholder="e.g. Movie night!" maxlength="40" required>
@@ -439,6 +459,7 @@
           <option value="playdate">👫 Play date</option>
           <option value="school">📚 School event</option>
           <option value="parent">👪 Parent event</option>
+          <option value="babysitting">🧡 Babysitting</option>
           <option value="other">🌈 Other</option>
         </select>
 
@@ -500,13 +521,38 @@
   </div>
 </div>
 
+<div class="overlay" id="ashleyOverlay">
+  <div class="sheet">
+    <div class="sheet-inner">
+      <button class="close-x" id="ashleyCloseBtn">✕</button>
+      <h2>🧡 Ashley Day</h2>
+      <div class="sub">When is Ashley coming?</div>
+      <div class="ashley-opt-grid">
+        <button type="button" class="ashley-opt sel" data-mode="allday">
+          <span>☀️ All day <span class="sub">Ashley's here the whole day</span></span>
+          <span class="tick">✓</span>
+        </button>
+        <button type="button" class="ashley-opt" data-mode="1205">
+          <span>🕐 12:00 PM – 5:00 PM <span class="sub">The usual afternoon slot</span></span>
+          <span class="tick">✓</span>
+        </button>
+        <button type="button" class="ashley-opt" data-mode="custom">
+          <span>✏️ Custom time <span class="sub">Pick a different start time</span></span>
+          <span class="tick">✓</span>
+        </button>
+      </div>
+      <button type="button" class="time-done-btn" id="ashleyConfirmBtn">Add Ashley Day ✨</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   const FIREBASE_URL = "https://lillians-calendar-default-rtdb.firebaseio.com/events.json";
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const typeColors = { birthday:"#ff8fd6", playdate:"#7fd8ff", school:"#ffe57f", parent:"#c9a6ff", other:"#8ff5c7" };
-  const typeDefaultEmoji = { birthday:"🎂", playdate:"👫", school:"📚", parent:"👪", other:"🌈" };
-  const typeLabels = { birthday:"🎂 Birthday", playdate:"🧸 Play date", school:"📚 School event", parent:"👪 Parent event", other:"🌈 Other" };
+  const typeColors = { birthday:"#ff8fd6", playdate:"#7fd8ff", school:"#ffe57f", parent:"#c9a6ff", babysitting:"#ffb199", other:"#8ff5c7" };
+  const typeDefaultEmoji = { birthday:"🎂", playdate:"👫", school:"📚", parent:"👪", babysitting:"🧡", other:"🌈" };
+  const typeLabels = { birthday:"🎂 Birthday", playdate:"🧸 Play date", school:"📚 School event", parent:"👪 Parent event", babysitting:"🧡 Babysitting", other:"🌈 Other" };
   const emojiChoices = ["🎂","🎉","🎈","🌈","🦄","⭐","🐱","😺","🐾","🐈","👫","🐶","🎮","⚽","🍕","🎨","📚","✈️","🏖️","🎃","👪","🦋","🍦","🎁","🧩","🚲","👶","🤸","🍳","💼","📿","📖","🧶"];
 
   let events = [];
@@ -710,7 +756,7 @@
         <div class="emoji">${ev.emoji||'⭐'}</div>
         <div class="info">
           <div class="title">${escapeHtml(ev.title)}</div>
-          <div class="time">${ev.time ? formatTime(ev.time) : ''}${ev.recurring ? ' · every year' : ''}</div>
+          <div class="time">${ev.timeLabel ? ev.timeLabel : (ev.time ? formatTime(ev.time) : '')}${ev.recurring ? ' · every year' : ''}</div>
         </div>
         <button class="del" data-id="${ev.id}">✕</button>
       `;
@@ -813,6 +859,12 @@
     let h24 = pickHour % 12;
     if(pickAmPm==='PM') h24 += 12;
     const val = pad(h24)+':'+pad(pickMin);
+    if(ashleyCustomPending){
+      ashleyCustomPending = false;
+      timeOverlay.classList.remove('open');
+      addAshleyEvent(val, null);
+      return;
+    }
     timeInput.value = val;
     timeDisplayBtn.textContent = formatTime(val);
     timeDisplayBtn.classList.remove('placeholder');
@@ -828,6 +880,59 @@
     timeInput.value = '';
     timeDisplayBtn.textContent = 'Tap to choose a time ›';
     timeDisplayBtn.classList.add('placeholder');
+  }
+
+  // ---- Ashley Day quick add ----
+  const ashleyOverlay = document.getElementById('ashleyOverlay');
+  let ashleyMode = 'allday';
+  let ashleyCustomPending = false;
+
+  document.getElementById('ashleyQuickBtn').addEventListener('click', ()=>{
+    ashleyMode = 'allday';
+    document.querySelectorAll('.ashley-opt').forEach(b=>b.classList.toggle('sel', b.dataset.mode==='allday'));
+    ashleyOverlay.classList.add('open');
+  });
+  document.getElementById('ashleyCloseBtn').addEventListener('click', ()=> ashleyOverlay.classList.remove('open'));
+  ashleyOverlay.addEventListener('click', (e)=>{ if(e.target===ashleyOverlay) ashleyOverlay.classList.remove('open'); });
+
+  document.querySelectorAll('.ashley-opt').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      ashleyMode = btn.dataset.mode;
+      document.querySelectorAll('.ashley-opt').forEach(b=>b.classList.toggle('sel', b===btn));
+    });
+  });
+
+  document.getElementById('ashleyConfirmBtn').addEventListener('click', ()=>{
+    if(ashleyMode==='allday'){
+      addAshleyEvent('', 'All day');
+    } else if(ashleyMode==='1205'){
+      addAshleyEvent('12:00', '12:00 PM – 5:00 PM');
+    } else {
+      ashleyCustomPending = true;
+      ashleyOverlay.classList.remove('open');
+      resetTimePicker();
+      timeOverlay.classList.add('open');
+    }
+  });
+
+  function addAshleyEvent(time, timeLabel){
+    const newEvent = {
+      id: 'ev_'+Date.now()+'_'+Math.floor(Math.random()*1000),
+      date: selectedDateKey,
+      recurring: false,
+      title: 'Ashley Day',
+      time: time,
+      timeLabel: timeLabel,
+      emoji: '🧡',
+      type: 'babysitting'
+    };
+    events.push(newEvent);
+    save();
+    burstConfetti();
+    ashleyOverlay.classList.remove('open');
+    renderEventList();
+    renderCalendar();
+    updateCountdown();
   }
 
 document.getElementById('closeBtn').addEventListener('click', ()=> overlay.classList.remove('open'));
@@ -898,7 +1003,7 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
         numsEl.innerHTML = `<div><span class="num">🎉</span><span class="unit">Happy Birthday!</span></div>`;
         return;
       }
-      const timeStr = best.ev.time ? ' at ' + formatTime(best.ev.time) : '';
+      const timeStr = best.ev.timeLabel ? ' — ' + best.ev.timeLabel : (best.ev.time ? ' at ' + formatTime(best.ev.time) : '');
       numsEl.innerHTML = `<div><span class="num">🎉</span><span class="unit">Today${timeStr}!</span></div>`;
       return;
     }
