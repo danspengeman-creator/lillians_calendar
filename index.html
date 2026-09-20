@@ -100,6 +100,10 @@
   }
   .countdown-nums .num{font-size:1.6rem; font-weight:800; display:block;}
   .countdown-nums .unit{font-size:.65rem; text-transform:uppercase; opacity:.9;}
+  .countdown-nums .countdown-time-note{
+    background:none !important; padding:2px 0 0 !important; min-width:0 !important;
+    width:100%; font-size:.8rem; font-weight:700; opacity:.92; text-align:center;
+  }
 
   .cal-wrap{
     max-width:560px; margin:18px auto 40px; padding:0 12px;
@@ -1036,6 +1040,12 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
     numsEl.innerHTML = `
       <div><span class="num">${totalDays}</span><span class="unit">days${isLillianBday(best.ev) ? ' to my birthday' : ' away'}</span></div>
     `;
+    if(best.ev.timeLabel || best.ev.time){
+      const timeLine = document.createElement('div');
+      timeLine.className = 'countdown-time-note';
+      timeLine.textContent = best.ev.timeLabel ? best.ev.timeLabel : formatTime(best.ev.time);
+      numsEl.appendChild(timeLine);
+    }
   }
 
   // ---- confetti burst ----
