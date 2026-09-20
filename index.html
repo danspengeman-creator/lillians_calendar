@@ -883,12 +883,8 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
       numsEl.innerHTML = `<div><span class="num">🎉</span><span class="unit">Today!</span></div>`;
       return;
     }
-    const weeks = Math.floor(totalDays/7);
-    const days = totalDays % 7;
     numsEl.innerHTML = `
-      <div><span class="num">${totalDays}</span><span class="unit">days total</span></div>
-      <div><span class="num">${weeks}</span><span class="unit">weeks</span></div>
-      <div><span class="num">${days}</span><span class="unit">extra days</span></div>
+      <div><span class="num">${totalDays}</span><span class="unit">days away</span></div>
     `;
   }
 
