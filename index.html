@@ -33,13 +33,15 @@
     position:relative;
   }
   .sparkle{
-    position:fixed; pointer-events:none; font-size:22px; opacity:.8;
+    position:fixed; top:-8vh; pointer-events:none; font-size:22px; opacity:0;
     animation:drift linear infinite;
     z-index:0;
   }
   @keyframes drift{
-    0%{transform:translateY(0) rotate(0deg); opacity:.9;}
-    100%{transform:translateY(-110vh) rotate(360deg); opacity:0;}
+    0%{transform:translateY(0) rotate(0deg); opacity:0;}
+    8%{opacity:.55;}
+    85%{opacity:.5;}
+    100%{transform:translateY(115vh) rotate(360deg); opacity:0;}
   }
   header{
     text-align:center;
@@ -342,8 +344,9 @@
   const STORAGE_KEY = "lillian_calendar_events_v1";
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const typeColors = { birthday:"#ff8fd6", playdate:"#7fd8ff", school:"#ffe57f", parent:"#c9a6ff", other:"#8ff5c7" };
+  const typeDefaultEmoji = { birthday:"🎂", playdate:"👫", school:"📚", parent:"👪", other:"🌈" };
   const typeLabels = { birthday:"🎂 Birthday", playdate:"🧸 Play date", school:"📚 School event", parent:"👪 Parent event", other:"🌈 Other" };
-  const emojiChoices = ["🎂","🎉","🎈","🌈","🦄","⭐","🐱","😺","🐾","🐈","🐶","🎮","⚽","🍕","🎨","📚","✈️","🏖️","🎃","👪"];
+  const emojiChoices = ["🎂","🎉","🎈","🌈","🦄","⭐","🐱","😺","🐾","🐈","👫","🐶","🎮","⚽","🍕","🎨","📚","✈️","🏖️","🎃","👪","🦋","🍦","🎁","🧩","🚲"];
 
   let events = [];
   try{
@@ -536,6 +539,16 @@
     const h12 = ((h+11)%12)+1;
     return h12+':'+pad(mm)+' '+ap;
   }
+
+  typeInput.addEventListener('change', ()=>{
+    const def = typeDefaultEmoji[typeInput.value];
+    if(def){
+      selectedEmoji = def;
+      [...emojiPick.children].forEach(c=>{
+        c.classList.toggle('sel', c.textContent===def);
+      });
+    }
+  });
 
   document.getElementById('closeBtn').addEventListener('click', ()=> overlay.classList.remove('open'));
   overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.classList.remove('open'); });
