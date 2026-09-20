@@ -327,7 +327,7 @@
         <label>What kind of event?</label>
         <select id="typeInput">
           <option value="birthday">🎂 Birthday</option>
-          <option value="playdate" selected>🧸 Play date</option>
+          <option value="playdate">👫 Play date</option>
           <option value="school">📚 School event</option>
           <option value="parent">👪 Parent event</option>
           <option value="other">🌈 Other</option>
@@ -540,17 +540,7 @@
     return h12+':'+pad(mm)+' '+ap;
   }
 
-  typeInput.addEventListener('change', ()=>{
-    const def = typeDefaultEmoji[typeInput.value];
-    if(def){
-      selectedEmoji = def;
-      [...emojiPick.children].forEach(c=>{
-        c.classList.toggle('sel', c.textContent===def);
-      });
-    }
-  });
-
-  document.getElementById('closeBtn').addEventListener('click', ()=> overlay.classList.remove('open'));
+document.getElementById('closeBtn').addEventListener('click', ()=> overlay.classList.remove('open'));
   overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.classList.remove('open'); });
 
   addForm.addEventListener('submit', (e)=>{
