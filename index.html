@@ -202,9 +202,41 @@
     text-align:center; color:#b8a4d6; padding:18px 0; font-weight:600;
   }
 
+  .time-btn{
+    text-align:left; cursor:pointer;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .time-btn .arrow{color:var(--purple); font-weight:800;}
+  .time-btn.placeholder{color:#b8a4d6;}
+
+  .time-picker-head{display:flex; align-items:center; justify-content:center; gap:14px; margin:6px 0 20px;}
+  .time-picker-head .big-time{font-size:2.4rem; font-weight:800; color:var(--ink);}
+  .ampm-toggle{display:flex; border-radius:14px; overflow:hidden; border:2px solid #ecdfff;}
+  .ampm-toggle button{
+    border:none; background:#fbf9ff; color:var(--purple); font-weight:800;
+    padding:10px 14px; font-size:.9rem;
+  }
+  .ampm-toggle button.sel{background:linear-gradient(135deg,var(--pink),var(--purple)); color:white;}
+
+  .picker-label{font-size:.75rem; font-weight:800; color:#8a6fa8; margin:10px 0 6px;}
+  .hour-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  .min-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  .hour-grid button, .min-grid button{
+    border:2px solid #ecdfff; background:#fbf9ff; color:var(--ink);
+    border-radius:14px; padding:14px 0; font-size:1.05rem; font-weight:800;
+  }
+  .hour-grid button.sel, .min-grid button.sel{
+    border-color:var(--pink); background:linear-gradient(135deg,#ffe6f4,#efe4ff); color:var(--ink);
+  }
+  .time-done-btn{
+    margin-top:18px; width:100%; border:none; border-radius:16px; padding:14px;
+    background:linear-gradient(135deg,#ff8fd6,#b48cff); color:white; font-weight:800; font-size:1.05rem;
+    box-shadow:0 10px 20px -8px rgba(180,90,220,.5);
+  }
+
   form.add-form{margin-top:16px; display:flex; flex-direction:column; gap:10px;}
   form.add-form label{font-size:.75rem; font-weight:800; color:#8a6fa8; margin-bottom:-4px;}
-  form.add-form input, form.add-form select{
+  form.add-form input, form.add-form select, form.add-form .time-btn{
     border:2px solid #ecdfff; border-radius:14px; padding:12px 14px;
     font-size:1rem; font-family:inherit; background:#fbf9ff; color:var(--ink);
   }
@@ -238,13 +270,14 @@
     padding:16px 18px;
     box-shadow:0 14px 28px -16px rgba(80,150,200,.45);
     color:#2c5c74;
+    text-align:center;
   }
   .weather-head{font-weight:800; font-size:1rem; margin-bottom:8px;}
   .weather-body{font-weight:600; font-size:.9rem;}
-  .weather-now{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .weather-now{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px;}
   .weather-now .big{font-size:2rem;}
   .weather-now .temp{font-size:1.5rem; font-weight:800;}
-  .weather-days{display:flex; gap:10px; overflow-x:auto; padding-bottom:2px;}
+  .weather-days{display:flex; gap:10px; overflow-x:auto; padding-bottom:2px; justify-content:center;}
   .weather-day{
     background:rgba(255,255,255,.6); border-radius:14px; padding:8px 10px;
     text-align:center; min-width:58px; flex:0 0 auto;
@@ -369,7 +402,8 @@
         <input type="text" id="titleInput" placeholder="e.g. Movie night!" maxlength="40" required>
 
         <label>What time?</label>
-        <input type="time" id="timeInput">
+        <button type="button" class="time-btn placeholder" id="timeDisplayBtn">Tap to choose a time <span class="arrow">›</span></button>
+        <input type="hidden" id="timeInput">
 
         <label>Pick a sparkle</label>
         <div class="emoji-pick" id="emojiPick"></div>
@@ -396,6 +430,32 @@
       <h2>🎂 All Birthdays</h2>
       <div class="sub">Soonest first!</div>
       <div id="bdayList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="timeOverlay">
+  <div class="sheet">
+    <div class="sheet-inner">
+      <button class="close-x" id="timeCloseBtn">✕</button>
+      <h2>What time? ⏰</h2>
+      <div class="sub">Pick an hour, minutes, and AM or PM</div>
+
+      <div class="time-picker-head">
+        <div class="big-time" id="bigTimeDisplay">--:--</div>
+        <div class="ampm-toggle">
+          <button type="button" id="amBtn" class="sel">AM</button>
+          <button type="button" id="pmBtn">PM</button>
+        </div>
+      </div>
+
+      <div class="picker-label">Hour</div>
+      <div class="hour-grid" id="hourGrid"></div>
+
+      <div class="picker-label">Minutes</div>
+      <div class="min-grid" id="minGrid"></div>
+
+      <button type="button" class="time-done-btn" id="timeDoneBtn">Set this time ✨</button>
     </div>
   </div>
 </div>
@@ -548,6 +608,7 @@
     sheetDate.textContent = dateObj.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
     sheetSub.textContent = "What's happening today?";
     renderEventList();
+    resetTimePicker();
     overlay.classList.add('open');
   }
 
@@ -601,6 +662,78 @@
     return h12+':'+pad(mm)+' '+ap;
   }
 
+  // ---- kid-friendly time picker ----
+  const timeOverlay = document.getElementById('timeOverlay');
+  const timeDisplayBtn = document.getElementById('timeDisplayBtn');
+  const bigTimeDisplay = document.getElementById('bigTimeDisplay');
+  const amBtn = document.getElementById('amBtn');
+  const pmBtn = document.getElementById('pmBtn');
+  const hourGrid = document.getElementById('hourGrid');
+  const minGrid = document.getElementById('minGrid');
+  let pickHour = null, pickMin = null, pickAmPm = 'AM';
+
+  for(let h=1; h<=12; h++){
+    const b = document.createElement('button');
+    b.type='button'; b.textContent = h;
+    b.addEventListener('click', ()=>{
+      pickHour = h;
+      [...hourGrid.children].forEach(c=>c.classList.remove('sel'));
+      b.classList.add('sel');
+      updateBigTime();
+    });
+    hourGrid.appendChild(b);
+  }
+  [0,15,30,45].forEach(m=>{
+    const b = document.createElement('button');
+    b.type='button'; b.textContent = pad(m);
+    b.addEventListener('click', ()=>{
+      pickMin = m;
+      [...minGrid.children].forEach(c=>c.classList.remove('sel'));
+      b.classList.add('sel');
+      updateBigTime();
+    });
+    minGrid.appendChild(b);
+  });
+  amBtn.addEventListener('click', ()=>{ pickAmPm='AM'; amBtn.classList.add('sel'); pmBtn.classList.remove('sel'); updateBigTime(); });
+  pmBtn.addEventListener('click', ()=>{ pickAmPm='PM'; pmBtn.classList.add('sel'); amBtn.classList.remove('sel'); updateBigTime(); });
+
+  function updateBigTime(){
+    const h = pickHour===null ? '--' : pickHour;
+    const m = pickMin===null ? '--' : pad(pickMin);
+    bigTimeDisplay.textContent = h+':'+m+' '+pickAmPm;
+  }
+
+  timeDisplayBtn.addEventListener('click', ()=>{
+    timeOverlay.classList.add('open');
+  });
+  document.getElementById('timeCloseBtn').addEventListener('click', ()=> timeOverlay.classList.remove('open'));
+  timeOverlay.addEventListener('click', (e)=>{ if(e.target===timeOverlay) timeOverlay.classList.remove('open'); });
+
+  document.getElementById('timeDoneBtn').addEventListener('click', ()=>{
+    if(pickHour===null || pickMin===null){
+      updateBigTime();
+      return;
+    }
+    let h24 = pickHour % 12;
+    if(pickAmPm==='PM') h24 += 12;
+    const val = pad(h24)+':'+pad(pickMin);
+    timeInput.value = val;
+    timeDisplayBtn.textContent = formatTime(val);
+    timeDisplayBtn.classList.remove('placeholder');
+    timeOverlay.classList.remove('open');
+  });
+
+  function resetTimePicker(){
+    pickHour = null; pickMin = null; pickAmPm = 'AM';
+    [...hourGrid.children].forEach(c=>c.classList.remove('sel'));
+    [...minGrid.children].forEach(c=>c.classList.remove('sel'));
+    amBtn.classList.add('sel'); pmBtn.classList.remove('sel');
+    updateBigTime();
+    timeInput.value = '';
+    timeDisplayBtn.textContent = 'Tap to choose a time ›';
+    timeDisplayBtn.classList.add('placeholder');
+  }
+
 document.getElementById('closeBtn').addEventListener('click', ()=> overlay.classList.remove('open'));
   overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.classList.remove('open'); });
 
@@ -620,7 +753,7 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
     events.push(newEvent);
     save();
     burstConfetti();
-    titleInput.value=''; timeInput.value='';
+    titleInput.value=''; resetTimePicker();
     renderEventList();
     renderCalendar();
     updateCountdown();
