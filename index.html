@@ -67,6 +67,10 @@
     50%{transform:rotate(12deg);}
   }
   .subtitle{color:#8a6fa8; font-weight:600; margin-top:4px;}
+  .sync-status{
+    min-height:18px; font-size:.72rem; font-weight:700; color:#a58bc4;
+    margin-top:4px;
+  }
 
   .countdown-wrap{
     max-width:520px; margin:14px auto 0; padding:0 16px;
@@ -348,6 +352,7 @@
 <header>
   <h1><span class="wand">✨</span> Lillian's Magic Calendar <span class="wand">🪄</span></h1>
   <div class="subtitle">🐾 Tap a day to peek inside! 🐾</div>
+  <div class="sync-status" id="syncStatus"></div>
 </header>
 
 <button id="catMascot" aria-label="Pet the cat">🐱</button>
@@ -462,7 +467,7 @@
 
 <script>
 (function(){
-  const STORAGE_KEY = "lillian_calendar_events_v1";
+  const FIREBASE_URL = "https://lillians-calendar-default-rtdb.firebaseio.com/events.json";
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const typeColors = { birthday:"#ff8fd6", playdate:"#7fd8ff", school:"#ffe57f", parent:"#c9a6ff", other:"#8ff5c7" };
   const typeDefaultEmoji = { birthday:"🎂", playdate:"👫", school:"📚", parent:"👪", other:"🌈" };
@@ -470,25 +475,52 @@
   const emojiChoices = ["🎂","🎉","🎈","🌈","🦄","⭐","🐱","😺","🐾","🐈","👫","🐶","🎮","⚽","🍕","🎨","📚","✈️","🏖️","🎃","👪","🦋","🍦","🎁","🧩","🚲","👶","🤸","🍳","💼","📿","📖","🧶"];
 
   let events = [];
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    events = raw ? JSON.parse(raw) : null;
-  }catch(e){ events = null; }
+  const defaultEvents = [
+    {id:"seed1", date:"06-11", recurring:true, title:"Lillian's Birthday!", time:"", emoji:"🎂", type:"birthday"},
+    {id:"seed2", date:"08-04", recurring:true, title:"Dad's Birthday", time:"", emoji:"🎈", type:"birthday"},
+    {id:"seed3", date:"05-11", recurring:true, title:"Mom's Birthday", time:"", emoji:"💐", type:"birthday"},
+    {id:"seed4", date:"05-02", recurring:true, title:"Maybelle's Birthday", time:"", emoji:"🎀", type:"birthday"},
+    {id:"seed5", date:"12-24", recurring:true, title:"Nolan's Birthday", time:"", emoji:"🎁", type:"birthday"}
+  ];
 
-  if(!events){
-    // seed with family birthdays (recurring every year, no year stored -> use MM-DD key)
-    events = [
-      {id:"seed1", date:"06-11", recurring:true, title:"Lillian's Birthday!", time:"", emoji:"🎂", type:"birthday"},
-      {id:"seed2", date:"08-04", recurring:true, title:"Dad's Birthday", time:"", emoji:"🎈", type:"birthday"},
-      {id:"seed3", date:"05-11", recurring:true, title:"Mom's Birthday", time:"", emoji:"💐", type:"birthday"},
-      {id:"seed4", date:"05-02", recurring:true, title:"Maybelle's Birthday", time:"", emoji:"🎀", type:"birthday"},
-      {id:"seed5", date:"12-24", recurring:true, title:"Nolan's Birthday", time:"", emoji:"🎁", type:"birthday"}
-    ];
-    save();
+  function setSyncStatus(msg){
+    const el = document.getElementById('syncStatus');
+    if(el) el.textContent = msg;
   }
 
   function save(){
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(events)); }catch(e){}
+    setSyncStatus('Saving...');
+    fetch(FIREBASE_URL, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(events)
+    }).then(r=>{
+      if(!r.ok) throw new Error('save failed');
+      setSyncStatus('Saved ✓');
+      setTimeout(()=>setSyncStatus(''), 1500);
+    }).catch(()=>{
+      setSyncStatus("Couldn't save, check connection");
+    });
+  }
+
+  function loadAndInit(){
+    setSyncStatus('Loading calendar...');
+    fetch(FIREBASE_URL)
+      .then(r=>r.json())
+      .then(data=>{
+        events = Array.isArray(data) ? data.filter(Boolean) : (data && typeof data==='object' ? Object.values(data) : null);
+        if(!events || !events.length){
+          events = defaultEvents.slice();
+          save();
+        }
+        setSyncStatus('');
+        finishInit();
+      })
+      .catch(()=>{
+        events = defaultEvents.slice();
+        setSyncStatus("Offline — showing default calendar");
+        finishInit();
+      });
   }
 
   // ---- sparkle background ----
@@ -928,9 +960,13 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
     });
   }
 
-  renderCalendar();
-  updateCountdown();
-  loadWeather();
+  function finishInit(){
+    renderCalendar();
+    updateCountdown();
+    loadWeather();
+  }
+
+  loadAndInit();
 })();
 </script>
 </body>
