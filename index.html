@@ -105,6 +105,26 @@
     width:100%; font-size:.8rem; font-weight:700; opacity:.92; text-align:center;
   }
 
+  .week-strip-wrap{
+    max-width:560px; margin:16px auto 0; padding:0 12px;
+    position:relative; z-index:2;
+  }
+  .week-strip{
+    display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px;
+  }
+  .week-day{
+    flex:0 0 auto; width:58px;
+    background:var(--card); border-radius:18px; padding:10px 6px 8px;
+    text-align:center; box-shadow:0 10px 22px -14px rgba(120,90,180,.4);
+    border:2px solid transparent;
+  }
+  .week-day.today{border-color:#ff9ad1; background:linear-gradient(135deg,#fff2fa,#f3eaff);}
+  .week-day .wd{font-size:.62rem; font-weight:800; color:#a58bc4; text-transform:uppercase;}
+  .week-day .dn{font-size:1.1rem; font-weight:800; color:var(--ink); margin:2px 0 4px;}
+  .week-day .wdots{display:flex; justify-content:center; gap:3px; min-height:6px;}
+  .week-day .wdots span{width:6px; height:6px; border-radius:50%;}
+  .week-day:active{transform:scale(.94);}
+
   .cal-wrap{
     max-width:560px; margin:18px auto 40px; padding:0 12px;
     position:relative; z-index:2;
@@ -421,6 +441,10 @@
   <button class="bday-list-btn" id="bdayListBtn">🎂 See All Birthdays</button>
 </div>
 
+<div class="week-strip-wrap">
+  <div class="week-strip" id="weekStrip"></div>
+</div>
+
 <div class="cal-wrap">
   <div class="cal-card">
     <div class="cal-nav">
@@ -627,6 +651,52 @@
       });
   }
 
+  // ---- sound effects ----
+  let audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(AC) audioCtx = new AC();
+    }
+    if(audioCtx && audioCtx.state==='suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function playTone(freq, startTime, duration, type, vol){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime+startTime);
+    gain.gain.setValueAtTime(0, ctx.currentTime+startTime);
+    gain.gain.linearRampToValueAtTime(vol||0.15, ctx.currentTime+startTime+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+startTime+duration);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(ctx.currentTime+startTime);
+    osc.stop(ctx.currentTime+startTime+duration+0.05);
+  }
+  function playChime(){
+    playTone(880, 0, 0.28, 'sine', 0.14);
+    playTone(1318.5, 0.09, 0.32, 'sine', 0.12);
+    playTone(1760, 0.18, 0.4, 'sine', 0.1);
+  }
+  function playMeow(){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    const t0 = ctx.currentTime;
+    osc.frequency.setValueAtTime(520, t0);
+    osc.frequency.exponentialRampToValueAtTime(760, t0+0.12);
+    osc.frequency.exponentialRampToValueAtTime(340, t0+0.32);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(0.1, t0+0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0+0.38);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0+0.4);
+  }
+
   // ---- sparkle background ----
   const sparkleLayer = document.getElementById('sparkles');
   const sparkleChars = ["✨","⭐","💫","🌟"];
@@ -714,6 +784,33 @@
 
       cell.addEventListener('click', ()=> openDay(viewYear, viewMonth, d));
       daysGrid.appendChild(cell);
+    }
+    renderWeekStrip();
+  }
+
+  function renderWeekStrip(){
+    const strip = document.getElementById('weekStrip');
+    if(!strip) return;
+    strip.innerHTML = '';
+    const wdNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    for(let i=0;i<7;i++){
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate()+i);
+      const y=d.getFullYear(), m=d.getMonth(), dd=d.getDate();
+      const cell = document.createElement('div');
+      cell.className = 'week-day'+(i===0?' today':'');
+      const evs = eventsForDate(y,m,dd);
+      let dotsHtml = '';
+      if(evs.length){
+        const uniqueTypes = [...new Set(evs.map(e=>e.type))].slice(0,3);
+        dotsHtml = uniqueTypes.map(t=>`<span style="background:${typeColors[t]||'#ccc'}"></span>`).join('');
+      }
+      cell.innerHTML = `
+        <div class="wd">${i===0?'Today':wdNames[d.getDay()]}</div>
+        <div class="dn">${dd}</div>
+        <div class="wdots">${dotsHtml}</div>
+      `;
+      cell.addEventListener('click', ()=> openDay(y,m,dd));
+      strip.appendChild(cell);
     }
   }
 
@@ -959,6 +1056,7 @@
     events.push(newEvent);
     save();
     burstConfetti();
+    playChime();
     ashleyOverlay.classList.remove('open');
     renderEventList();
     renderCalendar();
@@ -984,6 +1082,7 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
     events.push(newEvent);
     save();
     burstConfetti();
+    playChime();
     titleInput.value=''; resetTimePicker();
     renderEventList();
     renderCalendar();
@@ -1069,6 +1168,7 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
   const catLines = ["Purr! 💕","Meow meow!","You're pawsome!","Let's plan something fun!","🐾 Hi friend! 🐾","I love this calendar!"];
   let bubbleTimer = null;
   catMascot.addEventListener('click', ()=>{
+    playMeow();
     catBubble.textContent = catLines[Math.floor(Math.random()*catLines.length)];
     catBubble.classList.add('show');
     clearTimeout(bubbleTimer);
