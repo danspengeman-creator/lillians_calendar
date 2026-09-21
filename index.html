@@ -411,16 +411,6 @@
   .big-paw{
     width:38px; height:38px; opacity:.9;
   }
-  .drift-paw{
-    position:fixed; top:-8vh; pointer-events:none; width:32px; height:32px; opacity:0; z-index:0;
-    animation:pawDrift 9s linear forwards;
-  }
-  @keyframes pawDrift{
-    0%{transform:translateY(0) rotate(-8deg); opacity:0;}
-    10%{opacity:.4;}
-    85%{opacity:.35;}
-    100%{transform:translateY(115vh) rotate(12deg); opacity:0;}
-  }
 
   .confetti{
     position:fixed; width:10px; height:10px; top:-20px; z-index:50; pointer-events:none;
@@ -767,19 +757,6 @@
       <ellipse cx="86" cy="38" rx="11" ry="14" fill="${fill}"/>
     </svg>`;
   }
-
-  // one big lone paw print drifting down every so often
-  function spawnDriftPaw(){
-    const p = document.createElement('div');
-    p.className='drift-paw';
-    p.innerHTML = pawSvgMarkup('#c9a6ff');
-    p.style.left = (10+Math.random()*80)+'vw';
-    p.style.animationDuration = (8+Math.random()*4)+'s';
-    document.body.appendChild(p);
-    setTimeout(()=>p.remove(), 13000);
-  }
-  spawnDriftPaw();
-  setInterval(spawnDriftPaw, 7000);
 
   // ---- calendar state ----
   const today = new Date();
