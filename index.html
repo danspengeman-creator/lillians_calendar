@@ -537,7 +537,7 @@
           <option value="school">📚 School event</option>
           <option value="parent">👪 Parent event</option>
           <option value="babysitting">🧡 Babysitting</option>
-          <option value="other">🌈 Other</option>
+          <option value="other" selected>🌈 Other</option>
         </select>
 
         <button type="submit" class="add-btn">Add to my calendar ✨</button>
@@ -638,7 +638,8 @@
     {id:"seed2", date:"08-04", recurring:true, title:"Dad's Birthday", time:"", emoji:"🎈", type:"birthday"},
     {id:"seed3", date:"05-11", recurring:true, title:"Mom's Birthday", time:"", emoji:"💐", type:"birthday"},
     {id:"seed4", date:"05-02", recurring:true, title:"Maybelle's Birthday", time:"", emoji:"🎀", type:"birthday"},
-    {id:"seed5", date:"12-24", recurring:true, title:"Nolan's Birthday", time:"", emoji:"🎁", type:"birthday"}
+    {id:"seed5", date:"12-24", recurring:true, title:"Nolan's Birthday", time:"", emoji:"🎁", type:"birthday"},
+    {id:"frida1", date:"07-06", recurring:true, title:"Frida Kahlo's Birthday", time:"", emoji:"🎨", type:"birthday", color:"#3fb6a8"}
   ];
 
   function setSyncStatus(msg){
@@ -674,6 +675,11 @@
           const hasLillianBday = events.some(e=>e.recurring && e.date==='06-11' && e.type==='birthday');
           if(!hasLillianBday){
             events.push(defaultEvents[0]);
+            save();
+          }
+          const hasFridaBday = events.some(e=>e.recurring && e.date==='07-06' && e.type==='birthday');
+          if(!hasFridaBday){
+            events.push(defaultEvents[5]);
             save();
           }
         }
@@ -717,6 +723,18 @@
     playTone(1760, 0.18, 0.4, 'sine', 0.1);
   }
   function playMeow(){
+    const el = document.getElementById('meowSound');
+    if(el){
+      try{
+        el.currentTime = 0;
+        const p = el.play();
+        if(p && p.catch) p.catch(()=>{ playSynthMeow(); });
+        return;
+      }catch(e){}
+    }
+    playSynthMeow();
+  }
+  function playSynthMeow(){
     const ctx = getAudioCtx();
     if(!ctx) return;
     const osc = ctx.createOscillator();
@@ -808,10 +826,10 @@
         cell.classList.add('has-event');
         const dotsWrap = document.createElement('div');
         dotsWrap.className='dots';
-        const uniqueTypes = [...new Set(evs.map(e=>e.type))].slice(0,4);
-        uniqueTypes.forEach(t=>{
+        const uniqueColors = [...new Set(evs.map(e=>e.color || typeColors[e.type] || '#ccc'))].slice(0,4);
+        uniqueColors.forEach(c=>{
           const dot = document.createElement('span');
-          dot.style.background = typeColors[t] || '#ccc';
+          dot.style.background = c;
           dotsWrap.appendChild(dot);
         });
         cell.appendChild(dotsWrap);
@@ -884,16 +902,34 @@
     emojiPick.appendChild(b);
   });
 
+  const fridaFacts = [
+    "Fun fact: Frida painted 55 self-portraits, more than almost any other artist!",
+    "Fun fact: Frida kept pet monkeys, parrots, and even a fawn at her home, the Blue House.",
+    "Fun fact: Frida taught herself to paint by using a mirror above her bed.",
+    "Fun fact: Frida loved wearing flower crowns and bright colorful dresses.",
+    "Fun fact: Frida's childhood home is still painted bright cobalt blue today!",
+    "Fun fact: Frida believed being different was something to celebrate, not hide.",
+    "Fun fact: Frida grew up in Mexico City and loved painting nature and animals."
+  ];
+
   function openDay(y,m,d){
     selectedDateKey = fullKey(y,m,d);
     const dateObj = new Date(y,m,d);
     sheetDate.textContent = dateObj.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
-    const isLillianBdayToday = (m===5 && d===11) && (y===today.getFullYear() && m===today.getMonth() && d===today.getDate());
-    sheetSub.innerHTML = isLillianBdayToday
-      ? '🎉🎂 Happy Birthday, Lillian! 🎂🎉'
-      : "What's happening today?";
-    if(isLillianBdayToday) sheetSub.style.color = '#ff5ec4';
-    else sheetSub.style.color = '';
+    const isToday = (y===today.getFullYear() && m===today.getMonth() && d===today.getDate());
+    const isLillianBdayToday = (m===5 && d===11) && isToday;
+    const isFridaBdayToday = (m===6 && d===6) && isToday;
+    if(isLillianBdayToday){
+      sheetSub.innerHTML = '🎉🎂 Happy Birthday, Lillian! 🎂🎉';
+      sheetSub.style.color = '#ff5ec4';
+    } else if(isFridaBdayToday){
+      const fact = fridaFacts[y % fridaFacts.length];
+      sheetSub.innerHTML = `🎨 Happy Birthday, Frida Kahlo! <br>${fact}`;
+      sheetSub.style.color = '#3fb6a8';
+    } else {
+      sheetSub.innerHTML = "What's happening today?";
+      sheetSub.style.color = '';
+    }
     renderEventList();
     resetTimePicker();
     overlay.classList.add('open');
@@ -914,7 +950,7 @@
     evs.forEach(ev=>{
       const row = document.createElement('div');
       row.className='ev';
-      row.style.borderLeftColor = typeColors[ev.type] || '#ccc';
+      row.style.borderLeftColor = ev.color || typeColors[ev.type] || '#ccc';
       row.innerHTML = `
         <div class="emoji">${ev.emoji||'⭐'}</div>
         <div class="info">
@@ -1250,6 +1286,7 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
     rows.forEach(r=>{
       const row = document.createElement('div');
       row.className='bday-row';
+      row.style.borderLeftColor = r.ev.color || typeColors[r.ev.type] || '#ff8fd6';
       const dateStr = r.occ.toLocaleDateString(undefined,{month:'long', day:'numeric'});
       const awayStr = r.days===0 ? "Today! 🎉" : r.days===1 ? "Tomorrow!" : r.days+" days";
       row.innerHTML = `
