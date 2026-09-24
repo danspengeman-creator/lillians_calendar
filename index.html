@@ -343,6 +343,11 @@
   .weather-now{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px;}
   .weather-now .big{font-size:2rem;}
   .weather-now .temp{font-size:1.5rem; font-weight:800;}
+  .outfit-tip{
+    background:rgba(255,255,255,.55); border-radius:12px; padding:8px 12px;
+    margin:0 0 10px; font-size:.85rem; font-weight:700;
+  }
+  .outfit-emoji{font-size:1.05rem;}
   .weather-days{display:flex; gap:10px; overflow-x:auto; padding-bottom:2px; justify-content:center;}
   .weather-day{
     background:rgba(255,255,255,.6); border-radius:14px; padding:8px 10px;
@@ -1372,6 +1377,21 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
     if(code>=95) return "⛈️";
     return "🌡️";
   }
+  function outfitSuggestion(tempF, code){
+    let base;
+    if(tempF < 32) base = { text: "Bundle up! Heavy coat, hat, and gloves", emoji: "🧣" };
+    else if(tempF < 45) base = { text: "Warm coat and a hat", emoji: "🧥" };
+    else if(tempF < 60) base = { text: "A light jacket or hoodie", emoji: "🧥" };
+    else if(tempF < 75) base = { text: "T-shirt weather, maybe a light layer", emoji: "👕" };
+    else base = { text: "Shorts and a t-shirt, it's warm out!", emoji: "🩳" };
+
+    const isRain = (code>=51 && code<=67) || (code>=80 && code<=82) || code>=95;
+    const isSnow = (code>=71 && code<=77) || (code>=85 && code<=86);
+    if(isSnow) return { text: base.text + " plus snow boots", emoji: "⛄" };
+    if(isRain) return { text: base.text + " and don't forget rain boots and an umbrella", emoji: "☔" };
+    return base;
+  }
+
   function loadWeather(){
     const weatherBody = document.getElementById('weatherBody');
     const url = "https://api.open-meteo.com/v1/forecast?latitude=40.3160&longitude=-74.0205&current=temperature_2m,weathercode&daily=temperature_2m_max,temperature_2m_min,weathercode&temperature_unit=fahrenheit&timezone=auto&forecast_days=4";
@@ -1380,6 +1400,8 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
       const daily = data.daily;
       const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
       let html = `<div class="weather-now"><span class="big">${weatherEmoji(cur.weathercode)}</span><span class="temp">${Math.round(cur.temperature_2m)}°F</span> now in Oceanport</div>`;
+      const outfit = outfitSuggestion(cur.temperature_2m, cur.weathercode);
+      html += `<div class="outfit-tip"><span class="outfit-emoji">${outfit.emoji}</span> Wear: ${outfit.text}</div>`;
       html += '<div class="weather-days">';
       daily.time.forEach((t,i)=>{
         const d = new Date(t+'T00:00:00');
