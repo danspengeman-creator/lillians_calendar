@@ -546,6 +546,7 @@
       <span><i style="background:#ffe57f"></i>School event</span>
       <span><i style="background:#c9a6ff"></i>Parent event</span>
       <span><i style="background:#ffb199"></i>Babysitting</span>
+      <span><i style="background:#ffc86b"></i>Special day</span>
       <span><i style="background:#8ff5c7"></i>Other</span>
       <span>🎉 Holiday</span>
       <span>🌙 Moon phase</span>
@@ -589,6 +590,7 @@
           <option value="school">📚 School event</option>
           <option value="parent">👪 Parent event</option>
           <option value="babysitting">🧡 Babysitting</option>
+          <option value="special">🌟 Special day (break or last day of school)</option>
           <option value="other" selected>🌈 Other</option>
         </select>
 
@@ -679,7 +681,7 @@
 (function(){
   const FIREBASE_URL = "https://lillians-calendar-default-rtdb.firebaseio.com/events.json";
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const typeColors = { birthday:"#ff8fd6", playdate:"#7fd8ff", school:"#ffe57f", parent:"#c9a6ff", babysitting:"#ffb199", other:"#8ff5c7" };
+  const typeColors = { birthday:"#ff8fd6", playdate:"#7fd8ff", school:"#ffe57f", parent:"#c9a6ff", babysitting:"#ffb199", special:"#ffc86b", other:"#8ff5c7" };
   const typeDefaultEmoji = { birthday:"🎂", playdate:"👫", school:"📚", parent:"👪", babysitting:"🧡", other:"🌈" };
   const typeLabels = { birthday:"🎂 Birthday", playdate:"🧸 Play date", school:"📚 School event", parent:"👪 Parent event", babysitting:"🧡 Babysitting", other:"🌈 Other" };
   const emojiChoices = ["🎂","🎉","🎈","🌈","🦄","⭐","🐱","😺","🐈","👫","🐶","🎮","⚽","🍕","🎨","📚","✈️","🏖️","🎃","👪","🦋","🍦","🎁","🧩","🚲","👶","🤸","🍳","💼","📿","📖","🧶"];
@@ -1083,6 +1085,10 @@
   }
 
   /* Cards shown inside the day panel */
+  function specialCardHTML(ev,y,m,d,todayDate){
+    return holidayCardHTML({emoji:ev.emoji||'🌟', name:escapeHtml(ev.title), blurb:'Your very own special day!'}, y,m,d,todayDate);
+  }
+
   function holidayCardHTML(h,y,m,d,todayDate){
     const n = daysFromToday(y,m,d,todayDate);
     let count;
@@ -1148,6 +1154,9 @@
     let html = '';
     const h = holidayOn(y,m,d);
     if(h) html += holidayCardHTML(h,y,m,d,todayDate);
+    eventsForDate(y,m,d).filter(e=>e.type==='special').forEach(e=>{
+      html += specialCardHTML(e,y,m,d,todayDate);
+    });
     const p = moonPhaseOn(y,m,d);
     html += p ? moonCardHTML(p) : moonDailyHTML(y,m,d);
     return html;
@@ -1194,6 +1203,16 @@
         hb.className = 'badge badge-holiday';
         hb.textContent = hol.emoji;
         cell.appendChild(hb);
+      }
+      const sp = evs.find(e=>e.type==='special');
+      if(sp){
+        cell.classList.add('holiday');
+        if(!hol){
+          const sb = document.createElement('span');
+          sb.className = 'badge badge-holiday';
+          sb.textContent = sp.emoji || '🌟';
+          cell.appendChild(sb);
+        }
       }
       const mp = moonPhaseOn(viewYear, viewMonth, d);
       if(mp){
@@ -1558,6 +1577,33 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
     });
     const nameEl = document.getElementById('nextEventName');
     const numsEl = document.getElementById('countdownNums');
+
+    // A holiday takes over the card when it is closer than her next event
+    // (and within 60 days). If both land on the same day the event wins.
+    let nextHol = null;
+    for(let yy=now.getFullYear(); yy<=now.getFullYear()+1; yy++){
+      holidaysForYear(yy).forEach(h=>{
+        const occ = new Date(yy, h.m, h.d);
+        if(occ >= todayStrip && (!nextHol || occ < nextHol.occ)){ nextHol = {h, occ}; }
+      });
+    }
+    if(nextHol){
+      const hDays = Math.round((nextHol.occ - todayStrip) / 86400000);
+      if(hDays <= 60 && (!best || nextHol.occ < best.occ)){
+        nameEl.textContent = nextHol.h.emoji + ' ' + nextHol.h.name;
+        if(hDays===0){
+          numsEl.innerHTML = `<div><span class="num">🎉</span><span class="unit">Today!</span></div>`;
+        } else {
+          numsEl.innerHTML = `<div><span class="num">${hDays}</span><span class="unit">${hDays===1 ? 'day away' : 'days away'}</span></div>`;
+        }
+        const tag = document.createElement('div');
+        tag.className = 'countdown-time-note';
+        tag.textContent = '🎉 Holiday';
+        numsEl.appendChild(tag);
+        return;
+      }
+    }
+
     if(!best){
       nameEl.textContent = "Add your first event!";
       numsEl.innerHTML = '';
@@ -1579,7 +1625,7 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
       return;
     }
     numsEl.innerHTML = `
-      <div><span class="num">${totalDays}</span><span class="unit">days${isLillianBday(best.ev) ? ' to my birthday' : ' away'}</span></div>
+      <div><span class="num">${totalDays}</span><span class="unit">${totalDays===1 ? 'day' : 'days'}${isLillianBday(best.ev) ? ' to my birthday' : ' away'}</span></div>
     `;
     if(best.ev.timeLabel || best.ev.time){
       const timeLine = document.createElement('div');
