@@ -52,12 +52,17 @@
     margin:0;
     font-size:clamp(1.05rem, 5.5vw, 2.1rem);
     white-space:nowrap;
+    letter-spacing:1px;
+  }
+  /* Only the words get the rainbow clip. The emojis sit outside it, because
+     emoji inside a background-clip:text element can paint a stray gradient
+     star at the top-left corner on some browsers. */
+  h1 .title-text{
     background:linear-gradient(90deg,#ff5ec4,#ffb84d,#ffe95c,#7ee08a,#5ec8ff,#b06bff,#ff5ec4);
     background-size:300% 100%;
     -webkit-background-clip:text;
     background-clip:text;
     color:transparent;
-    letter-spacing:1px;
     text-shadow:0 2px 0 rgba(255,255,255,.6);
     animation:rainbowMove 6s linear infinite;
   }
@@ -68,9 +73,6 @@
   h1 .wand{
     display:inline-block;
     animation:wiggle 2.2s ease-in-out infinite;
-    background:none;
-    -webkit-text-fill-color:initial;
-    color:initial;
   }
   @keyframes wiggle{
     0%,100%{transform:rotate(-8deg);}
@@ -506,7 +508,7 @@
 <div id="sparkles"></div>
 
 <header>
-  <h1><span class="wand">✨</span> Lillian's Magic Calendar <span class="wand">🪄</span></h1>
+  <h1><span class="wand">✨</span> <span class="title-text">Lillian's Magic Calendar</span> <span class="wand">🪄</span></h1>
   <div class="sync-status" id="syncStatus"></div>
 </header>
 
