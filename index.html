@@ -189,6 +189,39 @@
   .day .dots{position:absolute; bottom:5px; display:flex; gap:3px;}
   .day .dots span{width:6px; height:6px; border-radius:50%;}
   .day.has-event{background:linear-gradient(135deg,#ffe0f3,#e7e0ff);}
+  .day .badge{position:absolute; top:0; line-height:1; pointer-events:none; font-size:.85rem;}
+  .day .badge-holiday{right:1px;}
+  .day .badge-moon{left:1px;}
+  .day.holiday{box-shadow:inset 0 0 0 2px #ffc86b;}
+  .day.holiday:not(.has-event):not(.today){background:linear-gradient(135deg,#fff4d6,#ffe9f4);}
+
+  .sky-card{border-radius:20px; padding:12px 14px; margin:10px 0; text-align:left; line-height:1.35;}
+  .sky-card p{margin:8px 0 0; font-size:.88rem; font-weight:600;}
+  .sky-head{display:flex; align-items:center; gap:10px; font-weight:800; font-size:1.05rem;}
+  .sky-icon{font-size:2rem; line-height:1;}
+  .sky-holiday{background:linear-gradient(135deg,#fff4d6,#ffe3f1); border:2px solid #ffc86b; color:#7a4a00;}
+  .sky-holiday p{color:#6b4a2a;}
+  .sky-count{display:inline-block; margin-top:10px; padding:7px 14px; border-radius:999px; background:#fff; color:#c2410c; font-weight:800; font-size:.95rem; box-shadow:0 2px 6px rgba(194,65,12,.15);}
+  .sky-moon{background:linear-gradient(135deg,#2b2a5e,#4b3a8a); border:2px solid #8f86ff; color:#fff;}
+  .sky-moon p{color:#e4defc;}
+  .sky-moon.sky-small{padding:8px 12px;}
+  .sky-moon.sky-small .sky-icon{font-size:1.5rem;}
+  .sky-moon.sky-small .sky-head{font-size:.95rem;}
+  .sky-moon.sky-small p{font-size:.8rem; margin-top:4px;}
+  .sky-zodiac{margin-top:10px; padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.12);}
+  .sky-zodiac p{margin-top:4px;}
+  .sky-more{margin-top:10px;}
+  .sky-more summary{cursor:pointer; font-weight:800; font-size:.85rem; color:#ffe57f; padding:6px 0; list-style:none;}
+  .sky-more summary::-webkit-details-marker{display:none;}
+  .sky-time{margin-top:8px; font-size:.75rem; color:#bdb3f0; font-weight:700;}
+  @media (min-width:700px){
+    .day .badge{font-size:1.2rem; top:3px;}
+    .day .badge-holiday{right:5px;}
+    .day .badge-moon{left:5px;}
+    .sky-card p{font-size:1rem;}
+    .sky-head{font-size:1.2rem;}
+    .sky-icon{font-size:2.4rem;}
+  }
 
   .legend{
     display:flex; gap:14px; justify-content:center; flex-wrap:wrap;
@@ -314,10 +347,10 @@
     border:2px solid #ecdfff; border-radius:14px; padding:12px 14px;
     font-size:1rem; font-family:inherit; background:#fbf9ff; color:var(--ink);
   }
-  .emoji-pick{display:flex; flex-wrap:wrap; gap:8px;}
+  .emoji-pick{display:flex; flex-wrap:wrap; gap:10px;}
   .emoji-pick button{
-    font-size:1.4rem; border:2px solid #ecdfff; background:#fbf9ff;
-    border-radius:12px; width:46px; height:46px;
+    font-size:1.9rem; border:2px solid #ecdfff; background:#fbf9ff;
+    border-radius:14px; width:58px; height:58px;
   }
   .emoji-pick button.sel{border-color:var(--pink); background:#ffe6f4;}
   .add-btn{
@@ -459,7 +492,7 @@
     .sheet h2{font-size:1.7rem;}
     form.add-form input, form.add-form select, form.add-form .time-btn{font-size:1.1rem; padding:15px 16px;}
     .add-btn, .time-done-btn{font-size:1.15rem; padding:17px;}
-    .emoji-pick button{width:54px; height:54px; font-size:1.6rem;}
+    .emoji-pick button{width:62px; height:62px; font-size:2rem;}
     .hour-grid button, .min-grid button{padding:17px 0; font-size:1.2rem;}
     .ev .title{font-size:1.05rem;}
     .bday-row{padding:16px 18px;}
@@ -512,6 +545,8 @@
       <span><i style="background:#c9a6ff"></i>Parent event</span>
       <span><i style="background:#ffb199"></i>Babysitting</span>
       <span><i style="background:#8ff5c7"></i>Other</span>
+      <span>🎉 Holiday</span>
+      <span>🌙 Moon phase</span>
     </div>
   </div>
 
@@ -527,6 +562,8 @@
       <button class="close-x" id="closeBtn">✕</button>
       <h2 id="sheetDate">Day</h2>
       <div class="sub" id="sheetSub"></div>
+
+      <div id="skyInfo"></div>
 
       <div class="event-list" id="eventList"></div>
 
@@ -575,7 +612,7 @@
     <div class="sheet-inner">
       <button class="close-x" id="timeCloseBtn">✕</button>
       <h2>What time? ⏰</h2>
-      <div class="sub">Pick an hour, minutes, and AM or PM</div>
+      <div class="sub">Pick an hour, minutes and AM or PM</div>
 
       <div class="time-picker-head">
         <div class="big-time" id="bigTimeDisplay">--:--</div>
@@ -701,7 +738,7 @@
       })
       .catch(()=>{
         events = defaultEvents.slice();
-        setSyncStatus("Offline — showing default calendar");
+        setSyncStatus("Offline, showing default calendar");
         finishInit();
       });
   }
@@ -863,6 +900,257 @@
     });
   }
 
+  /* ===== Moon phases and holidays (all computed, nothing to maintain) ===== */
+  const RAD = Math.PI/180;
+  function norm360(x){ x = x % 360; return x<0 ? x+360 : x; }
+  function sinD(x){ return Math.sin(x*RAD); }
+
+  function moonSunState(ms){
+    const T = (ms/86400000 + 2440587.5 - 2451545.0)/36525;
+    const Ms = norm360(357.52911 + 35999.05029*T);
+    const L0 = norm360(280.46646 + 36000.76983*T);
+    const sun = norm360(L0 + (1.914602 - 0.004817*T)*sinD(Ms) + 0.019993*sinD(2*Ms) + 0.000289*sinD(3*Ms));
+    const Lm = 218.3164477 + 481267.88123421*T;
+    const D  = 297.8501921 + 445267.1114034*T;
+    const M  = 357.5291092 + 35999.0502909*T;
+    const Mp = 134.9633964 + 477198.8675055*T;
+    const F  = 93.2720950 + 483202.0175233*T;
+    const moon = norm360(Lm
+      + 6.288774*sinD(Mp) + 1.274027*sinD(2*D-Mp) + 0.658314*sinD(2*D)
+      + 0.213618*sinD(2*Mp) - 0.185116*sinD(M) - 0.114332*sinD(2*F)
+      + 0.058793*sinD(2*D-2*Mp) + 0.057066*sinD(2*D-M-Mp) + 0.053322*sinD(2*D+Mp)
+      + 0.045758*sinD(2*D-M) - 0.040923*sinD(M-Mp) - 0.034720*sinD(D) - 0.030383*sinD(M+Mp));
+    return {sun:sun, moon:moon, elong:norm360(moon-sun)};
+  }
+
+  const ZODIAC = [
+    {name:'Aries', emoji:'🐏', theme:'being brave and trying brand new things'},
+    {name:'Taurus', emoji:'🐂', theme:'cozy comfort, yummy food and taking your time'},
+    {name:'Gemini', emoji:'👯', theme:'asking questions, chatting with friends and learning new things'},
+    {name:'Cancer', emoji:'🦀', theme:'family, home and being extra kind and caring'},
+    {name:'Leo', emoji:'🦁', theme:'shining bright, being creative and having fun'},
+    {name:'Virgo', emoji:'🌾', theme:'helping others, staying organized and doing things carefully'},
+    {name:'Libra', emoji:'⚖️', theme:'fairness, sharing and being a good friend'},
+    {name:'Scorpio', emoji:'🦂', theme:'solving mysteries, being loyal and caring deeply about things'},
+    {name:'Sagittarius', emoji:'🏹', theme:'adventure, exploring and big dreams'},
+    {name:'Capricorn', emoji:'🐐', theme:'making goals and working hard one step at a time'},
+    {name:'Aquarius', emoji:'💧', theme:'inventing, being one of a kind and helping the world'},
+    {name:'Pisces', emoji:'🐟', theme:'imagination, dreams and making art'}
+  ];
+
+  const MOON_INFO = [
+    {name:'New Moon', emoji:'🌑', text:'The Moon is standing between Earth and the Sun, so the side we can see is in shadow. That is why the night sky looks dark with no Moon to spot! The Moon is still up there. It is just hiding. A new moon starts a brand new moon cycle that lasts about 29 days.'},
+    {name:'First Quarter Moon', emoji:'🌓', text:'The Moon has traveled a quarter of the way around Earth and the right half of it is glowing. The glowing part gets bigger every night, which is called waxing. Waxing means growing! Look for it in the afternoon and evening sky.'},
+    {name:'Full Moon', emoji:'🌕', text:'Earth is between the Sun and the Moon, so sunlight lights up the whole face of the Moon that we see. It rises when the Sun sets and glows all night long. It is the roundest and brightest the Moon ever gets!'},
+    {name:'Last Quarter Moon', emoji:'🌗', text:'The Moon is three quarters of the way around its trip and the left half of it is glowing. The glowing part gets smaller every night, which is called waning. Waning means shrinking! You can spot this one in the morning sky.'}
+  ];
+
+  const MOON_DAILY = [
+    {name:'Waxing Crescent', emoji:'🌒', text:'A thin sliver on the right is glowing and it grows bigger each night. Waxing means growing!'},
+    {name:'Waxing Gibbous', emoji:'🌔', text:'More than half is glowing and it keeps growing toward the full moon. Gibbous (say GIB-us) means bulging bigger than half.'},
+    {name:'Waning Gibbous', emoji:'🌖', text:'The full moon has passed and the glow shrinks a little each night. Waning means shrinking!'},
+    {name:'Waning Crescent', emoji:'🌘', text:'Just a thin sliver is left on the left side and it keeps getting smaller until the next new moon.'}
+  ];
+
+  const FULL_MOON_NAMES = [
+    {name:'Wolf Moon', why:'Long ago people heard wolves howling outside their villages in the cold of January.'},
+    {name:'Snow Moon', why:'February is when the deepest snow usually falls.'},
+    {name:'Worm Moon', why:'The ground starts to thaw in March and earthworms wiggle back out.'},
+    {name:'Pink Moon', why:'Pink spring wildflowers start blooming in April.'},
+    {name:'Flower Moon', why:'May is when flowers burst open everywhere.'},
+    {name:'Strawberry Moon', why:'June is when wild strawberries are ripe and ready to pick.'},
+    {name:'Buck Moon', why:'Male deer grow their new antlers in July.'},
+    {name:'Sturgeon Moon', why:'Big sturgeon fish were easy to catch in the lakes in August.'},
+    {name:'Harvest Moon', why:'Farmers used the bright moonlight to bring in their crops in September.'},
+    {name:'Hunter’s Moon', why:'October nights were when people stocked up food before winter.'},
+    {name:'Beaver Moon', why:'Beavers get busy building their winter homes in November.'},
+    {name:'Cold Moon', why:'December brings the long cold nights of winter.'}
+  ];
+
+  const moonCache = {};
+  function moonPhasesForMonth(y,m){
+    const key = y+'-'+m;
+    if(moonCache[key]) return moonCache[key];
+    const startMs = new Date(y,m,1).getTime() - 86400000;
+    const endMs = new Date(y,m+1,1).getTime() + 86400000;
+    const step = 6*3600*1000;
+    const found = [];
+    let prevMs = startMs;
+    let prevQ = Math.floor(moonSunState(prevMs).elong/90);
+    for(let t=startMs+step; t<=endMs; t+=step){
+      const q = Math.floor(moonSunState(t).elong/90);
+      if(q !== prevQ){
+        const target = q*90;
+        let lo = prevMs, hi = t;
+        for(let i=0;i<30;i++){
+          const mid = (lo+hi)/2;
+          const el = moonSunState(mid).elong;
+          const diff = ((el - target + 540) % 360) - 180;
+          if(diff < 0) lo = mid; else hi = mid;
+        }
+        found.push({type:q, ms:Math.round(hi)});
+      }
+      prevMs = t; prevQ = q;
+    }
+    const list = found.filter(p=>{
+      const dt = new Date(p.ms);
+      return dt.getFullYear()===y && dt.getMonth()===m;
+    }).map(p=>{
+      const dt = new Date(p.ms);
+      return {type:p.type, ms:p.ms, day:dt.getDate(), lon:moonSunState(p.ms).moon};
+    });
+    moonCache[key] = list;
+    return list;
+  }
+
+  function moonPhaseOn(y,m,d){
+    const list = moonPhasesForMonth(y,m);
+    for(let i=0;i<list.length;i++){
+      if(list[i].day===d){
+        const p = Object.assign({}, list[i]);
+        p.blue = (p.type===2) && list.some(o=>o.type===2 && o.ms<p.ms);
+        return p;
+      }
+    }
+    return null;
+  }
+
+  /* Holidays */
+  function nthWeekday(y,m,wd,n){
+    const first = new Date(y,m,1).getDay();
+    return 1 + ((wd - first + 7) % 7) + (n-1)*7;
+  }
+  function lastWeekday(y,m,wd){
+    const last = new Date(y,m+1,0);
+    return last.getDate() - ((last.getDay() - wd + 7) % 7);
+  }
+  function easterDate(y){
+    const a=y%19, b=Math.floor(y/100), c=y%100;
+    const d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25);
+    const g=Math.floor((b-f+1)/3);
+    const h=(19*a+b-d-g+15)%30;
+    const i=Math.floor(c/4), k=c%4;
+    const l=(32+2*e+2*i-h-k)%7;
+    const mm=Math.floor((a+11*h+22*l)/451);
+    const month=Math.floor((h+l-7*mm+114)/31);
+    const day=((h+l-7*mm+114)%31)+1;
+    return {m:month-1, d:day};
+  }
+
+  const holidayCache = {};
+  function holidaysForYear(y){
+    if(holidayCache[y]) return holidayCache[y];
+    const e = easterDate(y);
+    const list = [
+      {m:0, d:1, name:'New Year’s Day', emoji:'🎉', blurb:'The very first day of the year! A fresh start and a clean new calendar.'},
+      {m:0, d:nthWeekday(y,0,1,3), name:'Martin Luther King Jr. Day', emoji:'🕊️', blurb:'A day to remember Dr. King, who taught us to be kind and brave and to treat everyone fairly.'},
+      {m:1, d:2, name:'Groundhog Day', emoji:'🦫', blurb:'People watch a groundhog to see if it spots its shadow. If it does, there are six more weeks of winter!'},
+      {m:1, d:14, name:'Valentine’s Day', emoji:'💝', blurb:'A day to show people you love them with cards and treats and kind words.'},
+      {m:1, d:nthWeekday(y,1,1,3), name:'Presidents’ Day', emoji:'🇺🇸', blurb:'A day to remember the leaders of our country.'},
+      {m:2, d:17, name:'St. Patrick’s Day', emoji:'☘️', blurb:'A day for wearing green and hunting for lucky shamrocks!'},
+      {m:e.m, d:e.d, name:'Easter', emoji:'🐰', blurb:'A spring celebration with baskets and egg hunts and bunnies.'},
+      {m:3, d:22, name:'Earth Day', emoji:'🌎', blurb:'A day to show our planet some love by planting things and picking up trash.'},
+      {m:4, d:nthWeekday(y,4,0,2), name:'Mother’s Day', emoji:'💐', blurb:'A day to say thank you to moms with hugs and flowers and handmade cards.'},
+      {m:4, d:lastWeekday(y,4,1), name:'Memorial Day', emoji:'🇺🇸', blurb:'A day to remember the brave soldiers who gave their lives for our country. It is also the unofficial start of summer.'},
+      {m:5, d:19, name:'Juneteenth', emoji:'🎊', blurb:'Celebrates June 19 in 1865, when the last enslaved people in Texas learned they were free.'},
+      {m:5, d:nthWeekday(y,5,0,3), name:'Father’s Day', emoji:'👔', blurb:'A day to say thank you to dads with hugs and handmade cards.'},
+      {m:6, d:4, name:'Independence Day', emoji:'🎆', blurb:'The Fourth of July! Our country’s birthday with fireworks and cookouts and red white and blue.'},
+      {m:8, d:nthWeekday(y,8,1,1), name:'Labor Day', emoji:'🛠️', blurb:'A day to thank everyone who works hard. It is also the last long weekend of summer.'},
+      {m:9, d:31, name:'Halloween', emoji:'🎃', blurb:'Costumes and pumpkins and trick-or-treating!'},
+      {m:10, d:11, name:'Veterans Day', emoji:'🎖️', blurb:'A day to say thank you to people who served in the military.'},
+      {m:10, d:nthWeekday(y,10,4,4), name:'Thanksgiving', emoji:'🦃', blurb:'A day to say thank you for the good things in our lives and share a yummy feast with family.'},
+      {m:11, d:25, name:'Christmas', emoji:'🎄', blurb:'Twinkly lights and presents and time together with the people you love.'},
+      {m:11, d:31, name:'New Year’s Eve', emoji:'🥳', blurb:'The last night of the year! Stay up late and count down to midnight.'}
+    ];
+    holidayCache[y] = list;
+    return list;
+  }
+
+  function holidayOn(y,m,d){
+    const list = holidaysForYear(y);
+    for(let i=0;i<list.length;i++){
+      if(list[i].m===m && list[i].d===d) return list[i];
+    }
+    return null;
+  }
+
+  function daysFromToday(y,m,d,todayDate){
+    const a = Date.UTC(y,m,d);
+    const b = Date.UTC(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
+    return Math.round((a-b)/86400000);
+  }
+
+  /* Cards shown inside the day panel */
+  function holidayCardHTML(h,y,m,d,todayDate){
+    const n = daysFromToday(y,m,d,todayDate);
+    let count;
+    if(n===0) count = '🎉 It is today!';
+    else if(n===1) count = '⏰ Tomorrow!';
+    else if(n>1 && n<=60) count = '⏳ '+n+' days to go';
+    else if(n>60) count = '🔭 Still far away. The countdown starts 60 days before!';
+    else count = '✅ This one already happened';
+    return '<div class="sky-card sky-holiday">'
+      + '<div class="sky-head"><span class="sky-icon">'+h.emoji+'</span><span>'+h.name+'</span></div>'
+      + '<p>'+h.blurb+'</p>'
+      + '<div class="sky-count">'+count+'</div>'
+      + '</div>';
+  }
+
+  function moonCardHTML(p){
+    const info = MOON_INFO[p.type];
+    const z = ZODIAC[Math.floor(p.lon/30)];
+    const deg = Math.floor(p.lon % 30);
+    const dt = new Date(p.ms);
+    const time = dt.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+    let title = info.name;
+    let extra = '';
+    if(p.type===2){
+      const nick = FULL_MOON_NAMES[dt.getMonth()];
+      title = 'Full ' + nick.name;
+      extra = '<p>✨ Nickname: the '+nick.name+'. '+nick.why+'</p>';
+      if(p.blue){
+        title = 'Full Blue Moon';
+        extra = '<p>✨ This is the second full moon in one month, which is called a blue moon. That is where the saying “once in a blue moon” comes from!</p>';
+      }
+    }
+    let zodiacText;
+    if(p.type===0){
+      zodiacText = 'New moons are for fresh starts. Because it happens in '+z.name+', the fresh start mood is about '+z.theme+'. It is a fun time to dream up an idea or set a little goal.';
+    } else if(p.type===2){
+      zodiacText = 'Full moons are for celebrating and noticing how far you have come. Because it happens in '+z.name+', the glow is about '+z.theme+'.';
+    } else {
+      zodiacText = 'The Moon is hanging out in '+z.name+' today, so its mood is about '+z.theme+'.';
+    }
+    const phaseWord = p.type===0 ? 'new moon' : (p.type===2 ? 'full moon' : (p.type===1 ? 'first quarter moon' : 'last quarter moon'));
+    return '<div class="sky-card sky-moon">'
+      + '<div class="sky-head"><span class="sky-icon">'+info.emoji+'</span><span>'+title+'</span></div>'
+      + '<p>'+info.text+'</p>'
+      + extra
+      + '<div class="sky-zodiac"><b>'+z.emoji+' In '+z.name+' ('+deg+'°)</b><p>'+zodiacText+'</p></div>'
+      + '<details class="sky-more"><summary>What does “'+phaseWord+' in '+z.name+'” mean? 🔮</summary>'
+      + '<p>Long ago stargazers drew imaginary pictures in the stars along the path the Sun and Moon travel across the sky. There are 12 of them and together they are called the zodiac. The Moon visits each one for about two and a half days. Many people have fun believing each picture gives the Moon a special mood. So “'+phaseWord+' in '+z.name+'” means the Moon was lined up with the '+z.name+' part of the sky.</p></details>'
+      + '<div class="sky-time">Exact moment: '+time+'</div>'
+      + '</div>';
+  }
+
+  function moonDailyHTML(y,m,d){
+    const st = moonSunState(new Date(y,m,d,12).getTime());
+    const info = MOON_DAILY[Math.floor(st.elong/90)];
+    return '<div class="sky-card sky-moon sky-small">'
+      + '<div class="sky-head"><span class="sky-icon">'+info.emoji+'</span><span>'+info.name+' Moon</span></div>'
+      + '<p>'+info.text+'</p>'
+      + '</div>';
+  }
+
+  function skyInfoHTML(y,m,d,todayDate){
+    let html = '';
+    const h = holidayOn(y,m,d);
+    if(h) html += holidayCardHTML(h,y,m,d,todayDate);
+    const p = moonPhaseOn(y,m,d);
+    html += p ? moonCardHTML(p) : moonDailyHTML(y,m,d);
+    return html;
+  }
+
   function renderCalendar(){
     monthNameEl.textContent = monthNames[viewMonth];
     yearNameEl.textContent = viewYear;
@@ -897,6 +1185,22 @@
         cell.appendChild(dotsWrap);
       }
 
+      const hol = holidayOn(viewYear, viewMonth, d);
+      if(hol){
+        cell.classList.add('holiday');
+        const hb = document.createElement('span');
+        hb.className = 'badge badge-holiday';
+        hb.textContent = hol.emoji;
+        cell.appendChild(hb);
+      }
+      const mp = moonPhaseOn(viewYear, viewMonth, d);
+      if(mp){
+        const mb = document.createElement('span');
+        mb.className = 'badge badge-moon';
+        mb.textContent = MOON_INFO[mp.type].emoji;
+        cell.appendChild(mb);
+      }
+
       cell.addEventListener('click', ()=> openDay(viewYear, viewMonth, d));
       daysGrid.appendChild(cell);
     }
@@ -921,7 +1225,7 @@
       const infoHtml = evs.map(ev=>{
         const emoji = ev.emoji || '⭐';
         const timeStr = ev.timeLabel ? ev.timeLabel : (ev.time ? formatTime(ev.time) : '');
-        return `<span class="ev-item">${emoji} ${escapeHtml(ev.title)}${timeStr ? ' <span class="ev-time">— '+timeStr+'</span>' : ''}</span>`;
+        return `<span class="ev-item">${emoji} ${escapeHtml(ev.title)}${timeStr ? ' <span class="ev-time">at '+timeStr+'</span>' : ''}</span>`;
       }).join('');
       line.innerHTML = `<div class="wl-day">${dayLabel}</div><div class="wl-info">${infoHtml}</div>`;
       strip.appendChild(line);
@@ -966,7 +1270,7 @@
 
   const fridaFacts = [
     "Fun fact: Frida painted 55 self-portraits, more than almost any other artist!",
-    "Fun fact: Frida kept pet monkeys, parrots, and even a fawn at her home, the Blue House.",
+    "Fun fact: Frida kept pet monkeys, parrots and even a fawn at her home, the Blue House.",
     "Fun fact: Frida taught herself to paint by using a mirror above her bed.",
     "Fun fact: Frida loved wearing flower crowns and bright colorful dresses.",
     "Fun fact: Frida's childhood home is still painted bright cobalt blue today!",
@@ -992,6 +1296,8 @@
       sheetSub.innerHTML = "What's happening today?";
       sheetSub.style.color = '';
     }
+    const skyEl = document.getElementById('skyInfo');
+    if(skyEl) skyEl.innerHTML = skyInfoHTML(y,m,d,today);
     renderEventList();
     resetTimePicker();
     overlay.classList.add('open');
@@ -1266,7 +1572,7 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
         numsEl.innerHTML = `<div><span class="num">🎉</span><span class="unit">Happy Birthday!</span></div>`;
         return;
       }
-      const timeStr = best.ev.timeLabel ? ' — ' + best.ev.timeLabel : (best.ev.time ? ' at ' + formatTime(best.ev.time) : '');
+      const timeStr = best.ev.timeLabel ? ' at ' + best.ev.timeLabel : (best.ev.time ? ' at ' + formatTime(best.ev.time) : '');
       numsEl.innerHTML = `<div><span class="num">🎉</span><span class="unit">Today${timeStr}!</span></div>`;
       return;
     }
@@ -1379,7 +1685,7 @@ document.getElementById('closeBtn').addEventListener('click', ()=> overlay.class
   }
   function outfitSuggestion(tempF, code){
     let base;
-    if(tempF < 32) base = { text: "Bundle up! Heavy coat, hat, and gloves", emoji: "🧣" };
+    if(tempF < 32) base = { text: "Bundle up! Heavy coat, hat and gloves", emoji: "🧣" };
     else if(tempF < 45) base = { text: "Warm coat and a hat", emoji: "🧥" };
     else if(tempF < 60) base = { text: "A light jacket or hoodie", emoji: "🧥" };
     else if(tempF < 75) base = { text: "T-shirt weather, maybe a light layer", emoji: "👕" };
